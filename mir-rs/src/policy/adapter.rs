@@ -10,7 +10,7 @@ use crate::input::{
 };
 use crate::output::{Output, Zone};
 use crate::policy::{Advice, WindowManagementPolicy};
-use crate::window::{WindowInfo, WindowSpecification, WindowState};
+use crate::window::{ResizeEdge, WindowInfo, WindowSpecification, WindowState};
 
 /// Adapts a user-defined `WindowManagementPolicy` into the FFI `PolicyBridge` trait.
 pub(crate) struct PolicyBridgeAdapter<P: WindowManagementPolicy> {
@@ -122,7 +122,7 @@ impl<P: WindowManagementPolicy> PolicyBridge for PolicyBridgeAdapter<P> {
         let info = Self::make_window_info(window_info);
         let input_event = crate::input::InputEvent { timestamp_ns: 0 };
         self.policy
-            .handle_request_resize(&info, &input_event, edge as u32);
+            .handle_request_resize(&info, &input_event, ResizeEdge::from_raw(edge));
     }
 
     fn confirm_inherited_move(

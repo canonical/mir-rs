@@ -32,14 +32,6 @@ unsafe impl Send for WindowManagerTools {}
 unsafe impl Sync for WindowManagerTools {}
 
 impl WindowManagerTools {
-    /// Create a new WindowManagerTools from a raw pointer to the C++ MiralTools.
-    ///
-    /// # Safety
-    /// The pointer must be valid for the lifetime of the policy.
-    pub(crate) unsafe fn from_raw(ptr: *mut mir_sys::ffi::MiralTools) -> Self {
-        Self { raw: ptr }
-    }
-
     /// Create an uninitialized tools instance (pointer is null).
     ///
     /// The tools will be automatically initialized by the framework before
@@ -56,6 +48,16 @@ impl WindowManagerTools {
     }
 
     /// Get a pinned mutable reference to the underlying tools.
+    ///
+    /// Takes `&self` because the C++ `MiralTools` object is owned by the server, not by
+    /// this handle: every tools method is a call *through* the pointer rather than a
+    /// mutation of the Rust struct, so requiring `&mut self` would only force needless
+    /// `RefCell`s on policy implementations.
+    ///
+    /// Safety: the pointer is installed by the runner before any policy callback runs and
+    /// stays valid for the whole server run, and dispatch is single-threaded, so no two
+    /// `&mut` borrows are live at once. The assertion catches use before initialization.
+    #[allow(clippy::mut_from_ref)]
     fn pin_mut(&self) -> Pin<&mut mir_sys::ffi::MiralTools> {
         assert!(!self.raw.is_null(), "WindowManagerTools not initialized");
         unsafe { Pin::new_unchecked(&mut *self.raw) }

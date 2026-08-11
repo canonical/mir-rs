@@ -7,11 +7,8 @@ members = [
 resolver = "2"
 
 [workspace.package]
-name = "mir"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
 rust-version = "1.82.0"
-
-[workspace.dependencies]
-cxx = { version = ">=1.0.167" }
-cxx-build = { version = ">=1.0.167" }
+license = "GPL-2.0-or-later"
+repository = "https://github.com/canonical/mir-rs"

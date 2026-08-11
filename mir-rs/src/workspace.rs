@@ -14,12 +14,31 @@ pub struct Workspace {
 
 impl Workspace {
     /// Create a workspace handle from a raw ID.
-    pub(crate) fn from_id(id: u64) -> Self {
+    ///
+    /// Workspace IDs are opaque; the compositor supplies them and a policy may store or
+    /// recreate a handle from one.
+    pub fn from_id(id: u64) -> Self {
         Self { id }
     }
 
     /// Get the unique identifier for this workspace.
     pub fn id(&self) -> u64 {
         self.id
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_id_round_trips() {
+        assert_eq!(Workspace::from_id(42).id(), 42);
+    }
+
+    #[test]
+    fn workspaces_with_the_same_id_are_equal() {
+        assert_eq!(Workspace::from_id(3), Workspace::from_id(3));
+        assert_ne!(Workspace::from_id(3), Workspace::from_id(4));
     }
 }

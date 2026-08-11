@@ -1,6 +1,6 @@
 # mir-rs-tiling
 
-A minimal tiling window manager example using the [mir](../../mir-rs/) Rust API for [Mir](https://github.com/canonical/mir).
+A minimal tiling window manager example using the [`mir`](../../README.md) Rust API for [Mir](https://github.com/canonical/mir).
 
 This example demonstrates:
 

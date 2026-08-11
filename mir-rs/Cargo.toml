@@ -1,11 +1,11 @@
 [package]
 name = "mir"
-version = "0.1.0"
-edition = "2021"
-rust-version = "1.82.0"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
 description = "Idiomatic Rust API for building Wayland compositors with the Mir display server"
-license = "GPL-2.0-or-later"
-repository = "https://github.com/canonical/mir"
+license.workspace = true
+repository.workspace = true
 readme = "README.md"
 keywords = ["mir", "wayland", "compositor", "window-manager", "tiling"]
 categories = ["gui", "os"]

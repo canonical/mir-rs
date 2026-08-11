@@ -5,7 +5,7 @@ use crate::geometry::{Displacement, Point, Rectangle, Size};
 use crate::input::{InputEvent, KeyboardEvent, PointerEvent, TouchEvent};
 use crate::output::{Output, Zone};
 use crate::policy::WindowManagerTools;
-use crate::window::{Window, WindowInfo, WindowSpecification, WindowState};
+use crate::window::{ResizeEdge, Window, WindowInfo, WindowSpecification, WindowState};
 
 /// Advisory notifications from the compositor.
 ///
@@ -251,12 +251,13 @@ pub trait WindowManagementPolicy: Send + 'static {
     /// Handle a client-initiated interactive resize request.
     ///
     /// This is triggered by the client calling `xdg_toplevel::resize`.
+    /// `edge` identifies which edge or corner the client is dragging.
     /// Default: no-op.
     fn handle_request_resize(
         &mut self,
         _window_info: &WindowInfo,
         _input_event: &InputEvent,
-        _edge: u32,
+        _edge: ResizeEdge,
     ) {
     }
 

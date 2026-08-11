@@ -41,7 +41,7 @@ fn apply_wayland_extensions(
 ///     .enable(WaylandExtensions::LAYER_SHELL)
 ///     .enable(WaylandExtensions::FOREIGN_TOPLEVEL_LIST);
 /// ```
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct WaylandExtensions {
     /// Extensions to enable (empty = enable defaults).
     pub(crate) enabled: Vec<String>,
@@ -74,14 +74,6 @@ impl WaylandExtensions {
     pub const CONTENT_TYPE: &'static str = "wp_content_type_manager_v1";
     /// The `wp_idle_inhibit_manager_v1` protocol for preventing idle.
     pub const IDLE_INHIBIT: &'static str = "wp_idle_inhibit_manager_v1";
-
-    /// Create a default set of Wayland extensions.
-    pub fn default() -> Self {
-        Self {
-            enabled: Vec::new(),
-            disabled: Vec::new(),
-        }
-    }
 
     /// Enable a specific Wayland extension by name.
     pub fn enable(mut self, extension: impl Into<String>) -> Self {
@@ -147,5 +139,40 @@ mod tests {
             .expect("expected WaylandExtensions::apply() to be called once");
         assert_eq!(call.0, vec![WaylandExtensions::LAYER_SHELL.to_string()]);
         assert_eq!(call.1, vec![WaylandExtensions::SCREENCOPY.to_string()]);
+    }
+
+    #[test]
+    fn default_enables_and_disables_nothing() {
+        let extensions = WaylandExtensions::default();
+        assert!(extensions.enabled_extensions().is_empty());
+        assert!(extensions.disabled_extensions().is_empty());
+        assert!(!extensions.is_enabled(WaylandExtensions::LAYER_SHELL));
+    }
+
+    #[test]
+    fn is_enabled_requires_enabled_and_not_disabled() {
+        let extensions = WaylandExtensions::default()
+            .enable(WaylandExtensions::LAYER_SHELL)
+            .enable(WaylandExtensions::SCREENCOPY)
+            .disable(WaylandExtensions::SCREENCOPY);
+
+        assert!(extensions.is_enabled(WaylandExtensions::LAYER_SHELL));
+        assert!(!extensions.is_enabled(WaylandExtensions::SCREENCOPY));
+        assert!(!extensions.is_enabled(WaylandExtensions::VIRTUAL_KEYBOARD));
+    }
+
+    #[test]
+    fn builder_preserves_insertion_order() {
+        let extensions = WaylandExtensions::default()
+            .enable(WaylandExtensions::LAYER_SHELL)
+            .enable(WaylandExtensions::FOREIGN_TOPLEVEL_LIST);
+
+        assert_eq!(
+            extensions.enabled_extensions(),
+            [
+                WaylandExtensions::LAYER_SHELL.to_string(),
+                WaylandExtensions::FOREIGN_TOPLEVEL_LIST.to_string(),
+            ]
+        );
     }
 }

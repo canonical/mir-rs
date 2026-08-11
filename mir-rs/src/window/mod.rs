@@ -7,6 +7,8 @@
 mod info;
 mod specification;
 mod state;
+// `window::window` holds the `Window` handle itself; the name mirrors the public path.
+#[allow(clippy::module_inception)]
 mod window;
 
 pub use info::WindowInfo;

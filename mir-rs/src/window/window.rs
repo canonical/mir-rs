@@ -8,7 +8,7 @@ use crate::geometry::{Point, Size};
 /// in `HashMap` or `HashSet` for the external storage pattern.
 ///
 /// A default-constructed `Window` is invalid (not backed by any surface).
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub struct Window {
     id: u64,
     position: Point,
@@ -45,12 +45,25 @@ impl Window {
     }
 }
 
-impl Default for Window {
-    fn default() -> Self {
-        Self {
-            id: 0,
-            position: Point::default(),
-            size: Size::default(),
-        }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_window_is_invalid() {
+        let window = Window::default();
+        assert_eq!(window.id(), 0);
+        assert_eq!(window.top_left(), Point::default());
+        assert_eq!(window.size(), Size::default());
+        assert!(!window.is_valid());
+    }
+
+    #[test]
+    fn window_exposes_its_ffi_components() {
+        let window = Window::from_ffi(7, Point::new(10, 20), Size::new(640, 480));
+        assert_eq!(window.id(), 7);
+        assert_eq!(window.top_left(), Point::new(10, 20));
+        assert_eq!(window.size(), Size::new(640, 480));
+        assert!(window.is_valid());
     }
 }

@@ -262,3 +262,78 @@ impl From<Displacement<i32>> for mir_sys::ffi::Displacement {
         Self { dx: d.dx, dy: d.dy }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn point_plus_displacement_translates() {
+        assert_eq!(
+            Point::new(10, 20) + Displacement::new(5, -5),
+            Point::new(15, 15)
+        );
+    }
+
+    #[test]
+    fn point_minus_point_is_a_displacement() {
+        assert_eq!(
+            Point::new(15, 15) - Point::new(10, 20),
+            Displacement::new(5, -5)
+        );
+    }
+
+    #[test]
+    fn displacements_add_and_subtract() {
+        assert_eq!(
+            Displacement::new(1, 2) + Displacement::new(3, 4),
+            Displacement::new(4, 6)
+        );
+        assert_eq!(
+            Displacement::new(3, 4) - Displacement::new(1, 2),
+            Displacement::new(2, 2)
+        );
+    }
+
+    #[test]
+    fn rectangle_contains_is_half_open() {
+        let rect = Rectangle::new(Point::new(0, 0), Size::new(100, 50));
+        assert!(rect.contains(Point::new(0, 0)));
+        assert!(rect.contains(Point::new(99, 49)));
+        // The bottom-right edge is exclusive.
+        assert!(!rect.contains(Point::new(100, 49)));
+        assert!(!rect.contains(Point::new(99, 50)));
+        assert!(!rect.contains(Point::new(-1, 0)));
+    }
+
+    #[test]
+    fn empty_rectangle_contains_nothing() {
+        let rect = Rectangle::new(Point::new(10, 10), Size::new(0, 0));
+        assert!(!rect.contains(Point::new(10, 10)));
+    }
+
+    #[test]
+    fn float_variants_work() {
+        let rect = RectangleF::new(PointF::new(0.0, 0.0), SizeF::new(1.5, 1.5));
+        assert!(rect.contains(PointF::new(1.4, 1.4)));
+        assert!(!rect.contains(PointF::new(1.5, 1.4)));
+    }
+
+    #[test]
+    fn geometry_types_round_trip_through_ffi() {
+        let point = Point::new(3, 4);
+        assert_eq!(Point::from(mir_sys::ffi::Point::from(point)), point);
+
+        let size = Size::new(800, 600);
+        assert_eq!(Size::from(mir_sys::ffi::Size::from(size)), size);
+
+        let displacement = Displacement::new(-1, 2);
+        assert_eq!(
+            Displacement::from(mir_sys::ffi::Displacement::from(displacement)),
+            displacement
+        );
+
+        let rect = Rectangle::new(point, size);
+        assert_eq!(Rectangle::from(mir_sys::ffi::Rectangle::from(rect)), rect);
+    }
+}

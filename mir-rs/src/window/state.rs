@@ -1,9 +1,10 @@
 //! Window state and type enumerations.
 
 /// The state a window can be in.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum WindowState {
     /// State is unknown or unset.
+    #[default]
     Unknown,
     /// Normal restored state.
     Restored,
@@ -56,16 +57,11 @@ impl WindowState {
     }
 }
 
-impl Default for WindowState {
-    fn default() -> Self {
-        Self::Unknown
-    }
-}
-
 /// The type of a window, describing its role.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum WindowType {
     /// A regular application window.
+    #[default]
     Normal,
     /// A utility/floating window.
     Utility,
@@ -123,16 +119,14 @@ impl WindowType {
     }
 }
 
-impl Default for WindowType {
-    fn default() -> Self {
-        Self::Normal
-    }
-}
-
 /// Resize edge flags for interactive resize requests.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+///
+/// The values mirror `MirResizeEdge`, which is a bitmask: the corner variants are the
+/// bitwise-or of their two adjacent edges.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum ResizeEdge {
     /// No specific edge.
+    #[default]
     None,
     /// Left edge.
     Left,
@@ -153,27 +147,45 @@ pub enum ResizeEdge {
 }
 
 impl ResizeEdge {
-    /// Convert from raw C enum value.
-    pub(crate) fn from_raw(value: i32) -> Self {
+    /// Convert from a raw `MirResizeEdge` value.
+    ///
+    /// Unrecognized combinations fall back to [`ResizeEdge::None`].
+    pub fn from_raw(value: i32) -> Self {
         match value {
             0 => Self::None,
             1 => Self::Left,
             2 => Self::Right,
-            3 => Self::Top,
-            4 => Self::Bottom,
+            4 => Self::Top,
+            8 => Self::Bottom,
             5 => Self::TopLeft,
             6 => Self::TopRight,
-            7 => Self::BottomLeft,
-            8 => Self::BottomRight,
+            9 => Self::BottomLeft,
+            10 => Self::BottomRight,
             _ => Self::None,
+        }
+    }
+
+    /// Convert to the raw `MirResizeEdge` value.
+    pub fn to_raw(self) -> i32 {
+        match self {
+            Self::None => 0,
+            Self::Left => 1,
+            Self::Right => 2,
+            Self::Top => 4,
+            Self::Bottom => 8,
+            Self::TopLeft => 5,
+            Self::TopRight => 6,
+            Self::BottomLeft => 9,
+            Self::BottomRight => 10,
         }
     }
 }
 
 /// Depth layer for window stacking order.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum DepthLayer {
     /// Application layer (default for normal windows).
+    #[default]
     Application,
     /// Always below other windows.
     AlwaysBelow,
@@ -214,16 +226,11 @@ impl DepthLayer {
     }
 }
 
-impl Default for DepthLayer {
-    fn default() -> Self {
-        Self::Application
-    }
-}
-
 /// Focus mode determining how a window gains/loses focus.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum FocusMode {
     /// Normal focus behavior.
+    #[default]
     Focusable,
     /// Window is not focusable.
     Disabled,
@@ -252,14 +259,8 @@ impl FocusMode {
     }
 }
 
-impl Default for FocusMode {
-    fn default() -> Self {
-        Self::Focusable
-    }
-}
-
 /// Orientation mode for the window.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum OrientationMode {
     /// Portrait orientation.
     Portrait,
@@ -270,6 +271,7 @@ pub enum OrientationMode {
     /// Inverted landscape.
     InvertedLandscape,
     /// Any orientation is acceptable.
+    #[default]
     Any,
 }
 
@@ -297,16 +299,11 @@ impl OrientationMode {
     }
 }
 
-impl Default for OrientationMode {
-    fn default() -> Self {
-        Self::Any
-    }
-}
-
 /// Pointer confinement state.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum PointerConfinementState {
     /// Pointer is unconfined (default).
+    #[default]
     Unconfined,
     /// Pointer is confined to the window area.
     ConfinedToWindow,
@@ -335,16 +332,11 @@ impl PointerConfinementState {
     }
 }
 
-impl Default for PointerConfinementState {
-    fn default() -> Self {
-        Self::Unconfined
-    }
-}
-
 /// Shell chrome type.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum ShellChrome {
     /// Normal shell chrome.
+    #[default]
     Normal,
     /// Low chrome (minimal decorations).
     Low,
@@ -366,12 +358,6 @@ impl ShellChrome {
             Self::Normal => 0,
             Self::Low => 1,
         }
-    }
-}
-
-impl Default for ShellChrome {
-    fn default() -> Self {
-        Self::Normal
     }
 }
 
@@ -459,9 +445,10 @@ impl TiledEdges {
 }
 
 /// Input reception mode for a window.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum InputReceptionMode {
     /// Normal input routing.
+    #[default]
     Normal,
     /// Receives all input events regardless of focus.
     ReceivesAllInput,
@@ -483,12 +470,6 @@ impl InputReceptionMode {
             Self::Normal => 0,
             Self::ReceivesAllInput => 1,
         }
-    }
-}
-
-impl Default for InputReceptionMode {
-    fn default() -> Self {
-        Self::Normal
     }
 }
 
@@ -515,4 +496,160 @@ pub enum FocusStealing {
     Prevent,
     /// Allow new windows to take focus.
     Allow,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn defaults_match_documented_variants() {
+        assert_eq!(WindowState::default(), WindowState::Unknown);
+        assert_eq!(WindowType::default(), WindowType::Normal);
+        assert_eq!(ResizeEdge::default(), ResizeEdge::None);
+        assert_eq!(DepthLayer::default(), DepthLayer::Application);
+        assert_eq!(FocusMode::default(), FocusMode::Focusable);
+        assert_eq!(OrientationMode::default(), OrientationMode::Any);
+        assert_eq!(
+            PointerConfinementState::default(),
+            PointerConfinementState::Unconfined
+        );
+        assert_eq!(ShellChrome::default(), ShellChrome::Normal);
+        assert_eq!(InputReceptionMode::default(), InputReceptionMode::Normal);
+    }
+
+    #[test]
+    fn window_state_round_trips_through_raw() {
+        let all = [
+            WindowState::Unknown,
+            WindowState::Restored,
+            WindowState::Minimized,
+            WindowState::Maximized,
+            WindowState::VertMaximized,
+            WindowState::Fullscreen,
+            WindowState::HorizMaximized,
+            WindowState::Hidden,
+            WindowState::Attached,
+        ];
+        for state in all {
+            assert_eq!(WindowState::from_raw(state.to_raw()), state);
+        }
+        assert_eq!(WindowState::from_raw(999), WindowState::Unknown);
+    }
+
+    #[test]
+    fn window_type_round_trips_through_raw() {
+        let all = [
+            WindowType::Normal,
+            WindowType::Utility,
+            WindowType::Dialog,
+            WindowType::Gloss,
+            WindowType::Freestyle,
+            WindowType::Menu,
+            WindowType::InputMethod,
+            WindowType::Satellite,
+            WindowType::Tip,
+            WindowType::Decoration,
+        ];
+        for window_type in all {
+            assert_eq!(WindowType::from_raw(window_type.to_raw()), window_type);
+        }
+        assert_eq!(WindowType::from_raw(-1), WindowType::Normal);
+    }
+
+    #[test]
+    fn resize_edge_matches_mir_resize_edge_bitmask() {
+        // MirResizeEdge is a bitmask: west = 1, east = 2, north = 4, south = 8, and the
+        // corners are the bitwise-or of their two adjacent edges.
+        assert_eq!(ResizeEdge::from_raw(0), ResizeEdge::None);
+        assert_eq!(ResizeEdge::from_raw(1), ResizeEdge::Left);
+        assert_eq!(ResizeEdge::from_raw(2), ResizeEdge::Right);
+        assert_eq!(ResizeEdge::from_raw(4), ResizeEdge::Top);
+        assert_eq!(ResizeEdge::from_raw(8), ResizeEdge::Bottom);
+        assert_eq!(ResizeEdge::from_raw(4 | 1), ResizeEdge::TopLeft);
+        assert_eq!(ResizeEdge::from_raw(4 | 2), ResizeEdge::TopRight);
+        assert_eq!(ResizeEdge::from_raw(8 | 1), ResizeEdge::BottomLeft);
+        assert_eq!(ResizeEdge::from_raw(8 | 2), ResizeEdge::BottomRight);
+        assert_eq!(ResizeEdge::from_raw(3), ResizeEdge::None);
+    }
+
+    #[test]
+    fn resize_edge_round_trips_through_raw() {
+        let all = [
+            ResizeEdge::None,
+            ResizeEdge::Left,
+            ResizeEdge::Right,
+            ResizeEdge::Top,
+            ResizeEdge::Bottom,
+            ResizeEdge::TopLeft,
+            ResizeEdge::TopRight,
+            ResizeEdge::BottomLeft,
+            ResizeEdge::BottomRight,
+        ];
+        for edge in all {
+            assert_eq!(ResizeEdge::from_raw(edge.to_raw()), edge);
+        }
+    }
+
+    #[test]
+    fn remaining_enums_round_trip_through_raw() {
+        for layer in [
+            DepthLayer::Application,
+            DepthLayer::AlwaysBelow,
+            DepthLayer::Below,
+            DepthLayer::Above,
+            DepthLayer::AlwaysAbove,
+            DepthLayer::Overlay,
+        ] {
+            assert_eq!(DepthLayer::from_raw(layer.to_raw()), layer);
+        }
+        for mode in [
+            FocusMode::Focusable,
+            FocusMode::Disabled,
+            FocusMode::Grabbing,
+        ] {
+            assert_eq!(FocusMode::from_raw(mode.to_raw()), mode);
+        }
+        for mode in [
+            OrientationMode::Portrait,
+            OrientationMode::Landscape,
+            OrientationMode::InvertedPortrait,
+            OrientationMode::InvertedLandscape,
+            OrientationMode::Any,
+        ] {
+            assert_eq!(OrientationMode::from_raw(mode.to_raw()), mode);
+        }
+        for state in [
+            PointerConfinementState::Unconfined,
+            PointerConfinementState::ConfinedToWindow,
+            PointerConfinementState::LockedToWindow,
+        ] {
+            assert_eq!(PointerConfinementState::from_raw(state.to_raw()), state);
+        }
+        for chrome in [ShellChrome::Normal, ShellChrome::Low] {
+            assert_eq!(ShellChrome::from_raw(chrome.to_raw()), chrome);
+        }
+        for mode in [
+            InputReceptionMode::Normal,
+            InputReceptionMode::ReceivesAllInput,
+        ] {
+            assert_eq!(InputReceptionMode::from_raw(mode.to_raw()), mode);
+        }
+    }
+
+    #[test]
+    fn unknown_raw_values_fall_back_to_defaults() {
+        assert_eq!(DepthLayer::from_raw(99), DepthLayer::default());
+        assert_eq!(FocusMode::from_raw(99), FocusMode::default());
+        assert_eq!(OrientationMode::from_raw(99), OrientationMode::default());
+        assert_eq!(
+            PointerConfinementState::from_raw(99),
+            PointerConfinementState::default()
+        );
+        assert_eq!(ShellChrome::from_raw(99), ShellChrome::default());
+        assert_eq!(
+            InputReceptionMode::from_raw(99),
+            InputReceptionMode::default()
+        );
+    }
 }

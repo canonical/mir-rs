@@ -1,11 +1,11 @@
 [package]
 name = "mir-sys"
-version = "0.1.0"
-edition = "2021"
-rust-version = "1.82.0"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
 description = "Low-level FFI bindings to the Mir compositor's miral C++ library"
-license = "GPL-2.0-or-later"
-repository = "https://github.com/canonical/mir"
+license.workspace = true
+repository.workspace = true
 readme = "README.md"
 keywords = ["mir", "wayland", "compositor", "ffi", "bindings"]
 categories = ["external-ffi-bindings", "gui"]
@@ -15,9 +15,9 @@ links = "miral"
 crate-type = ["staticlib", "rlib"]
 
 [dependencies]
-cxx.workspace = true
+cxx = { version = ">=1.0.167" }
 
 [build-dependencies]
-cxx-build.workspace = true
+cxx-build = { version = ">=1.0.167" }
 bindgen = "0.71"
 pkg-config = "0.3"

@@ -135,7 +135,7 @@ impl Default for TilingPolicy {
             zone: Rectangle::default(),
             tiles: HashMap::new(),
             app_order: Vec::new(),
-            launcher: ExternalClientLauncher::default(),
+            launcher: ExternalClientLauncher::new(),
             magnifier: TilingMagnifier::new(Magnifier::default(), true, 2.0, Size::new(400, 300)),
         }
     }

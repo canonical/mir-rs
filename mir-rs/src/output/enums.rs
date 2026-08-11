@@ -17,10 +17,11 @@
 //! Output-related enumerations.
 
 /// Display connector type.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[non_exhaustive]
 pub enum OutputType {
     /// Unknown connector type.
+    #[default]
     Unknown,
     /// VGA connector.
     Vga,
@@ -85,12 +86,6 @@ impl OutputType {
     }
 }
 
-impl Default for OutputType {
-    fn default() -> Self {
-        Self::Unknown
-    }
-}
-
 /// Physical dimensions of a display in millimeters.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct PhysicalSizeMM {
@@ -101,9 +96,10 @@ pub struct PhysicalSizeMM {
 }
 
 /// Display power mode.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum PowerMode {
     /// Display is on.
+    #[default]
     On,
     /// Display is in standby.
     Standby,
@@ -126,16 +122,11 @@ impl PowerMode {
     }
 }
 
-impl Default for PowerMode {
-    fn default() -> Self {
-        Self::On
-    }
-}
-
 /// Display orientation.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum Orientation {
     /// Normal (0°).
+    #[default]
     Normal,
     /// Rotated 90° clockwise (left).
     Left,
@@ -158,17 +149,12 @@ impl Orientation {
     }
 }
 
-impl Default for Orientation {
-    fn default() -> Self {
-        Self::Normal
-    }
-}
-
 /// Display form factor.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[non_exhaustive]
 pub enum FormFactor {
     /// Unknown form factor.
+    #[default]
     Unknown,
     /// Standard monitor.
     Monitor,
@@ -197,8 +183,32 @@ impl FormFactor {
     }
 }
 
-impl Default for FormFactor {
-    fn default() -> Self {
-        Self::Unknown
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn defaults_match_documented_variants() {
+        assert_eq!(OutputType::default(), OutputType::Unknown);
+        assert_eq!(PowerMode::default(), PowerMode::On);
+        assert_eq!(Orientation::default(), Orientation::Normal);
+        assert_eq!(FormFactor::default(), FormFactor::Unknown);
+    }
+
+    #[test]
+    fn from_raw_maps_known_values() {
+        assert_eq!(OutputType::from_raw(1), OutputType::Vga);
+        assert_eq!(OutputType::from_raw(11), OutputType::HdmiA);
+        assert_eq!(PowerMode::from_raw(3), PowerMode::Off);
+        assert_eq!(Orientation::from_raw(1), Orientation::Left);
+        assert_eq!(FormFactor::from_raw(1), FormFactor::Monitor);
+    }
+
+    #[test]
+    fn from_raw_falls_back_to_default_for_unknown_values() {
+        assert_eq!(OutputType::from_raw(999), OutputType::default());
+        assert_eq!(PowerMode::from_raw(999), PowerMode::default());
+        assert_eq!(Orientation::from_raw(999), Orientation::default());
+        assert_eq!(FormFactor::from_raw(999), FormFactor::default());
     }
 }

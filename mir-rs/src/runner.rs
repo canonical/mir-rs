@@ -112,6 +112,8 @@ impl MirRunner {
 
     /// Add a server extension (e.g., [`WaylandExtensions`](crate::extensions::WaylandExtensions),
     /// [`Decorations`](crate::extensions::Decorations), [`Keymap`](crate::extensions::Keymap)).
+    // This is a builder method that consumes and returns `Self`, not `std::ops::Add`.
+    #[allow(clippy::should_implement_trait)]
     pub fn add(mut self, extension: impl ServerExtension) -> Self {
         self.extensions.push(Box::new(extension));
         self

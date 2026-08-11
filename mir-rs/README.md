@@ -2,6 +2,11 @@
 
 Idiomatic Rust API for building Wayland compositors with the [Mir](https://github.com/canonical/mir) display server.
 
+This crate lives in the `mir-rs/` directory of the
+[mir-rs](https://github.com/canonical/mir-rs) workspace; see the
+[workspace README](../README.md) for an overview of how it fits together with the
+[`mir-sys`](../mir-rs-sys/README.md) bridge.
+
 ## System Requirements
 
 This crate requires the **miral C++ library** to be installed on your system at build time and runtime.
@@ -27,24 +32,23 @@ export LD_LIBRARY_PATH=/usr/local/lib
 ```rust
 use mir::prelude::*;
 
+#[derive(Default)]
 struct MyPolicy {
     tools: WindowManagerTools,
 }
 
 impl WindowManagementPolicy for MyPolicy {
     fn tools(&self) -> &WindowManagerTools { &self.tools }
+    fn tools_mut(&mut self) -> &mut WindowManagerTools { &mut self.tools }
 
     fn handle_keyboard_event(&mut self, event: &KeyboardEvent) -> bool {
-        // Handle keyboard shortcuts here
+        // Handle keyboard shortcuts here; return true to consume the event.
         false
     }
 
     fn advise(&mut self, event: Advice) {
-        match event {
-            Advice::NewWindow { window_info } => {
-                println!("New window: {:?}", window_info.name());
-            }
-            _ => {}
+        if let Advice::NewWindow { window_info } = event {
+            println!("New window: {:?}", window_info.name());
         }
     }
 }
@@ -80,6 +84,16 @@ This crate provides a safe, idiomatic Rust layer on top of the battle-tested mir
 - **`WindowManagerTools`** — API for querying and modifying windows
 - **`Advice`** — Enum of lifecycle notifications (new window, focus change, etc.)
 - **`WindowSpecification`** — Builder for window property changes
+- **`ServerExtension`** — Trait implemented by everything passed to `MirRunner::add`
+
+## Example
+
+A complete tiling compositor lives in
+[`examples/mir-rs-tiling`](examples/mir-rs-tiling/README.md):
+
+```bash
+WAYLAND_DISPLAY=wayland-98 cargo run -p mir-rs-tiling
+```
 
 ## License
 
