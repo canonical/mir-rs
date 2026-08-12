@@ -394,16 +394,12 @@ miral::Window const *MiralTools::lookup_window(uint64_t id) const {
 
 class RustWindowManagementPolicy : public miral::WindowManagementPolicy {
 public:
-  RustWindowManagementPolicy(miral::WindowManagerTools const &tools,
+  RustWindowManagementPolicy(std::unique_ptr<MiralTools> tools,
                              rust::Box<RustPolicyHolder> holder)
-      : tools_{std::make_unique<MiralTools>(tools)},
-        holder_{std::move(holder)} {}
+      : tools_{std::move(tools)}, holder_{std::move(holder)} {}
 
   // Access the tools (for registering windows during dispatch)
   MiralTools &miral_tools() { return *tools_; }
-
-  // Access the holder (needed during construction to set tools pointer)
-  RustPolicyHolder &holder() { return *holder_; }
 
   auto
   place_new_window(miral::ApplicationInfo const &app_info,
@@ -714,11 +710,30 @@ public:
   }
 
 private:
+  // Declaration order matters: `holder_` is destroyed before `tools_`, so the Rust
+  // side can invalidate its tools handles while the tools are still alive.
   std::unique_ptr<MiralTools> tools_;
   rust::Box<RustPolicyHolder> holder_;
 };
 
 // --- Runner lifecycle ---
+
+// Build the policy that dispatches into Rust.
+//
+// The MiralTools object is created *before* the Rust policy so that its address
+// can be handed to Rust at construction time, with no back-patching afterwards.
+// Moving the unique_ptr into the policy does not move the pointee, so the address
+// stays valid for the lifetime of the policy. Note that miral calls this while
+// its window manager is still being constructed, so Rust may record the pointer
+// but must not call through it until the first dispatch.
+static std::unique_ptr<miral::WindowManagementPolicy>
+make_rust_policy(miral::WindowManagerTools const &tools) {
+  auto owned_tools = std::make_unique<MiralTools>(tools);
+  auto holder =
+      rust_create_policy_holder(reinterpret_cast<uint64_t>(owned_tools.get()));
+  return std::make_unique<RustWindowManagementPolicy>(std::move(owned_tools),
+                                                      std::move(holder));
+}
 
 std::unique_ptr<MiralRunner>
 miral_runner_new(rust::Slice<const rust::String> args) {
@@ -737,20 +752,7 @@ int32_t miral_runner_run(MiralRunner &runner) {
 }
 
 int32_t miral_runner_run_with_rust_policy(MiralRunner &runner) {
-  auto policy_builder = miral::SetWindowManagementPolicy(
-      [](miral::WindowManagerTools const &tools)
-          -> std::unique_ptr<miral::WindowManagementPolicy> {
-        // Call into Rust to create the policy holder
-        auto holder = rust_create_policy_holder();
-        // Create the policy (which constructs its own MiralTools object)
-        auto policy = std::make_unique<RustWindowManagementPolicy>(
-            tools, std::move(holder));
-        // Now set the tools pointer to the MiralTools that lives INSIDE the
-        // policy. This pointer is valid for the lifetime of the policy object.
-        rust_policy_set_tools(policy->holder(), reinterpret_cast<uint64_t>(
-                                                    &policy->miral_tools()));
-        return policy;
-      });
+  auto policy_builder = miral::SetWindowManagementPolicy(&make_rust_policy);
 
   return runner.inner->run_with({policy_builder});
 }
@@ -758,16 +760,7 @@ int32_t miral_runner_run_with_rust_policy(MiralRunner &runner) {
 int32_t miral_runner_run_with_config(
     MiralRunner &runner, rust::Slice<const ConfigOptionDesc> config_options) {
   // Policy (always added)
-  auto policy_builder = miral::SetWindowManagementPolicy(
-      [](miral::WindowManagerTools const &tools)
-          -> std::unique_ptr<miral::WindowManagementPolicy> {
-        auto holder = rust_create_policy_holder();
-        auto policy = std::make_unique<RustWindowManagementPolicy>(
-            tools, std::move(holder));
-        rust_policy_set_tools(policy->holder(), reinterpret_cast<uint64_t>(
-                                                    &policy->miral_tools()));
-        return policy;
-      });
+  auto policy_builder = miral::SetWindowManagementPolicy(&make_rust_policy);
   runner.options.push_back(policy_builder);
 
   // Configuration options

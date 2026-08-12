@@ -1,50 +1,97 @@
 //! Window manager tools for performing actions from within a policy.
 
 use std::pin::Pin;
+use std::ptr;
+use std::sync::atomic::{AtomicPtr, Ordering};
 
 use crate::geometry::{Displacement, Point, Rectangle, Size};
 use crate::output::Zone;
 use crate::window::{Window, WindowInfo, WindowSpecification, WindowState};
 
+/// The C++ tools object for the running server.
+///
+/// Published once the policy has been constructed and cleared as soon as the
+/// policy is destroyed, so a handle that outlives the server panics on use rather
+/// than dereferencing a destroyed C++ object.
+static TOOLS_PTR: AtomicPtr<mir_sys::ffi::MiralTools> = AtomicPtr::new(ptr::null_mut());
+
+/// The handle returned by [`WindowManagerTools::global_ref`].
+static TOOLS: WindowManagerTools = WindowManagerTools { _private: () };
+
 /// Provides actions that a policy can take to manage windows.
 ///
-/// An instance of `WindowManagerTools` is provided when the policy is
-/// constructed and should be stored in the policy struct.
+/// This is a lightweight handle, not an owner: every method is a call through to
+/// the compositor's window management model. Obtain one with
+/// [`WindowManagerTools::current`], or simply call
+/// [`WindowManagementPolicy::tools`](crate::policy::WindowManagementPolicy::tools)
+/// from inside a policy — a policy does not need to store anything.
 ///
-/// All methods are safe to call from within policy callbacks. The tools
-/// communicate with the compositor's internal state to effect changes.
+/// # Availability
 ///
-/// # Safety
+/// The tools become usable once the policy has been constructed, and stop being
+/// usable when the server destroys it. In particular they are **not** usable
+/// while a policy is being constructed: miral is still building its window
+/// management model at that point, so a policy's constructor may store a handle
+/// but must not call through it. Every method panics when the tools are
+/// unavailable; [`is_available`](Self::is_available) reports the state.
 ///
-/// The raw pointer stored internally is guaranteed valid for the lifetime
-/// of the policy (which is the lifetime of the server run). All tool
-/// method calls happen within policy dispatch callbacks, so the pointer
-/// is always valid when tools methods are invoked.
+/// # One server per process
+///
+/// Mir runs a single server, with a single window management policy, per process
+/// ([`MirRunner::run`](crate::runner::MirRunner::run) consumes the runner), so
+/// all handles refer to that one server.
+///
+/// # Threads
+///
+/// Policy dispatch is single-threaded; from any other thread, wrap tools calls in
+/// [`invoke_under_lock`](Self::invoke_under_lock).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct WindowManagerTools {
-    /// Raw pointer to the C++ MiralTools object.
-    /// Valid for the entire lifetime of the policy (guaranteed by the runner).
-    raw: *mut mir_sys::ffi::MiralTools,
+    _private: (),
 }
 
-// Safety: MiralTools is only accessed from the compositor thread (single-threaded dispatch).
-// The policy is Send (required by trait bounds) but tools are only used within dispatch.
-unsafe impl Send for WindowManagerTools {}
-unsafe impl Sync for WindowManagerTools {}
-
 impl WindowManagerTools {
-    /// Create an uninitialized tools instance (pointer is null).
+    /// Get a handle to the running server's window manager tools.
     ///
-    /// The tools will be automatically initialized by the framework before
-    /// any policy methods are called. Use this in your policy's `Default` impl.
-    pub fn uninit() -> Self {
-        Self {
-            raw: std::ptr::null_mut(),
-        }
+    /// The handle stays valid for as long as the server runs; see
+    /// [availability](Self#availability). Storing it in a policy is optional —
+    /// [`WindowManagementPolicy::tools`](crate::policy::WindowManagementPolicy::tools)
+    /// returns the same thing.
+    pub fn current() -> Self {
+        Self { _private: () }
     }
 
-    /// Set the raw tools pointer (called during policy initialization).
-    pub(crate) fn set_raw(&mut self, ptr: *mut mir_sys::ffi::MiralTools) {
-        self.raw = ptr;
+    /// Whether the tools are usable, i.e. the server has finished constructing
+    /// the policy and has not destroyed it yet.
+    ///
+    /// Calling any other method while this returns `false` panics.
+    pub fn is_available() -> bool {
+        !TOOLS_PTR.load(Ordering::Acquire).is_null()
+    }
+
+    /// Publish the tools pointer supplied by the runner.
+    ///
+    /// Must not be called before the policy has been constructed: miral hands the
+    /// tools over while its window manager is still being built, and calling
+    /// through them before that finishes is undefined behaviour.
+    ///
+    /// # Safety
+    ///
+    /// `ptr` must point at a live `MiralTools` object that stays valid until
+    /// [`uninstall`](Self::uninstall) is called.
+    pub(crate) unsafe fn install(ptr: *mut mir_sys::ffi::MiralTools) {
+        TOOLS_PTR.store(ptr, Ordering::Release);
+    }
+
+    /// Invalidate every handle, before the C++ tools object is destroyed.
+    pub(crate) fn uninstall() {
+        TOOLS_PTR.store(ptr::null_mut(), Ordering::Release);
+    }
+
+    /// A borrowed handle, for the default implementation of
+    /// [`WindowManagementPolicy::tools`](crate::policy::WindowManagementPolicy::tools).
+    pub(crate) fn global_ref() -> &'static Self {
+        &TOOLS
     }
 
     /// Get a pinned mutable reference to the underlying tools.
@@ -54,19 +101,23 @@ impl WindowManagerTools {
     /// mutation of the Rust struct, so requiring `&mut self` would only force needless
     /// `RefCell`s on policy implementations.
     ///
-    /// Safety: the pointer is installed by the runner before any policy callback runs and
-    /// stays valid for the whole server run, and dispatch is single-threaded, so no two
-    /// `&mut` borrows are live at once. The assertion catches use before initialization.
+    /// Safety: the pointer is published once the policy exists and cleared when the
+    /// policy is dropped, so it is valid whenever it is non-null; dispatch is
+    /// single-threaded (and other threads must go through `invoke_under_lock`), so no
+    /// two `&mut` borrows are live at once. The assertion catches use outside that
+    /// window.
     #[allow(clippy::mut_from_ref)]
     fn pin_mut(&self) -> Pin<&mut mir_sys::ffi::MiralTools> {
-        assert!(!self.raw.is_null(), "WindowManagerTools not initialized");
-        unsafe { Pin::new_unchecked(&mut *self.raw) }
+        let raw = TOOLS_PTR.load(Ordering::Acquire);
+        assert!(!raw.is_null(), "WindowManagerTools not available");
+        unsafe { Pin::new_unchecked(&mut *raw) }
     }
 
     /// Get an immutable reference to the underlying tools.
     fn as_ref(&self) -> &mir_sys::ffi::MiralTools {
-        assert!(!self.raw.is_null(), "WindowManagerTools not initialized");
-        unsafe { &*self.raw }
+        let raw = TOOLS_PTR.load(Ordering::Acquire);
+        assert!(!raw.is_null(), "WindowManagerTools not available");
+        unsafe { &*raw }
     }
 
     /// Raise a window (and its children) to the top of the stacking order.
@@ -241,7 +292,8 @@ impl WindowManagerTools {
     ///
     /// # Panics
     ///
-    /// Panics if the tools have not been initialized yet.
+    /// Panics if the tools are not available (see
+    /// [`is_available`](Self::is_available)).
     ///
     /// A panic inside `callback` cannot unwind through the C++ frames that hold
     /// the lock, so it aborts the process. Handle errors inside the callback.
@@ -266,8 +318,8 @@ impl WindowManagerTools {
     /// use mir::prelude::*;
     ///
     /// // On a thread that is not running policy callbacks:
-    /// fn tidy_up(tools: &WindowManagerTools, done: Arc<AtomicBool>) {
-    ///     tools.invoke_under_lock(move || {
+    /// fn tidy_up(done: Arc<AtomicBool>) {
+    ///     WindowManagerTools::current().invoke_under_lock(move || {
     ///         // Tools calls made here are serialised against the compositor.
     ///         done.store(true, Ordering::SeqCst);
     ///     });
@@ -284,17 +336,64 @@ impl WindowManagerTools {
     }
 }
 
-// WindowManagerTools is not Clone (raw pointer semantics) but can be Debug
-impl std::fmt::Debug for WindowManagerTools {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("WindowManagerTools")
-            .field("raw", &self.raw)
-            .finish()
+#[cfg(test)]
+pub(crate) mod test_support {
+    use std::sync::{Mutex, MutexGuard};
+
+    static LOCK: Mutex<()> = Mutex::new(());
+
+    /// Serialises the tests that touch the process-wide tools pointer.
+    ///
+    /// A `should_panic` test poisons the lock; the guarded state is still sound.
+    pub(crate) fn lock() -> MutexGuard<'static, ()> {
+        LOCK.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    /// A non-null address that is never dereferenced — the tests only exercise
+    /// the availability bookkeeping, never an FFI call.
+    pub(crate) fn dummy_ptr() -> *mut mir_sys::ffi::MiralTools {
+        std::ptr::NonNull::<mir_sys::ffi::MiralTools>::dangling().as_ptr()
     }
 }
 
-impl Default for WindowManagerTools {
-    fn default() -> Self {
-        Self::uninit()
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn install_and_uninstall_toggle_availability() {
+        let _guard = test_support::lock();
+
+        assert!(
+            !WindowManagerTools::is_available(),
+            "no server is running in tests"
+        );
+
+        // Safety: the pointer is never dereferenced — it is uninstalled below and
+        // no tools method is called while it is installed.
+        unsafe { WindowManagerTools::install(test_support::dummy_ptr()) };
+        assert!(WindowManagerTools::is_available());
+
+        WindowManagerTools::uninstall();
+        assert!(
+            !WindowManagerTools::is_available(),
+            "handles must be invalidated once the server stops"
+        );
+    }
+
+    #[test]
+    fn handles_are_interchangeable() {
+        assert_eq!(
+            WindowManagerTools::current(),
+            *WindowManagerTools::global_ref()
+        );
+        assert_eq!(WindowManagerTools::current(), WindowManagerTools::default());
+    }
+
+    #[test]
+    #[should_panic(expected = "WindowManagerTools not available")]
+    fn use_without_a_server_panics() {
+        let _guard = test_support::lock();
+        WindowManagerTools::current().as_ref();
     }
 }

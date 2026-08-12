@@ -135,22 +135,22 @@ pub enum Advice {
 
 /// The primary trait for implementing a window management policy.
 ///
-/// All methods have sensible defaults — a policy that only implements `tools()`
-/// will behave like a floating window manager that honors all client requests.
+/// Every method has a sensible default — an empty `impl` behaves like a floating
+/// window manager that honors all client requests. Override the methods you care
+/// about.
 ///
-/// Override individual methods to customize behavior. The `advise` method
-/// receives lifecycle notifications that don't require a response.
+/// The window manager tools are always available to a policy through
+/// [`tools()`](Self::tools); there is nothing to store and nothing to initialize.
+/// The `advise` method receives lifecycle notifications that don't require a
+/// response.
 ///
 /// # Example
 ///
 /// ```rust,ignore
-/// struct MyPolicy {
-///     tools: WindowManagerTools,
-/// }
+/// #[derive(Default)]
+/// struct MyPolicy;
 ///
 /// impl WindowManagementPolicy for MyPolicy {
-///     fn tools(&self) -> &WindowManagerTools { &self.tools }
-///
 ///     fn place_new_window(
 ///         &mut self,
 ///         _app_info: &ApplicationInfo,
@@ -162,17 +162,19 @@ pub enum Advice {
 /// }
 /// ```
 pub trait WindowManagementPolicy: Send + 'static {
-    /// Access the window manager tools (immutable).
+    /// Access the window manager tools.
     ///
-    /// This is the only required method. The tools provide actions like
-    /// raising windows, setting focus, and modifying window properties.
-    fn tools(&self) -> &WindowManagerTools;
-
-    /// Access the window manager tools (mutable).
+    /// The tools provide actions like raising windows, setting focus, and
+    /// modifying window properties. The server makes them available once it has
+    /// constructed the policy, so this works in every policy method — but not in
+    /// the policy's own constructor, where miral is still building its window
+    /// management model.
     ///
-    /// Used internally by the framework to initialize the tools pointer.
-    /// Override only if your tools field has a non-standard name.
-    fn tools_mut(&mut self) -> &mut WindowManagerTools;
+    /// Override this only if your policy holds its own
+    /// [`WindowManagerTools`] handle and you would rather return that.
+    fn tools(&self) -> &WindowManagerTools {
+        WindowManagerTools::global_ref()
+    }
 
     /// Called to determine where a new window should be placed.
     ///
@@ -298,4 +300,49 @@ pub trait WindowManagementPolicy: Send + 'static {
     /// }
     /// ```
     fn advise(&mut self, _event: Advice) {}
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::input::{KeyAction, Modifiers};
+
+    /// A policy needs no methods at all: the tools are supplied by the framework.
+    struct MinimalPolicy;
+
+    impl WindowManagementPolicy for MinimalPolicy {}
+
+    #[test]
+    fn default_place_new_window_honors_the_request() {
+        let mut policy = MinimalPolicy;
+        let app = ApplicationInfo::from_ffi(1, "test-app".to_string());
+        let requested = WindowSpecification::new()
+            .with_top_left(Point::new(3, 5))
+            .with_size(Size::new(640, 480));
+
+        let placed = policy.place_new_window(&app, &requested);
+
+        assert_eq!(placed.top_left(), Some(Point::new(3, 5)));
+        assert_eq!(placed.size(), Some(Size::new(640, 480)));
+    }
+
+    #[test]
+    fn default_input_handlers_do_not_consume_events() {
+        let mut policy = MinimalPolicy;
+        let event = KeyboardEvent {
+            action: KeyAction::Down,
+            key_code: 30,
+            keysym: 0x61,
+            modifiers: Modifiers::default(),
+            timestamp_ns: 0,
+        };
+
+        assert!(!policy.handle_keyboard_event(&event));
+    }
+
+    #[test]
+    fn default_tools_is_the_shared_handle() {
+        let policy = MinimalPolicy;
+        assert_eq!(*policy.tools(), WindowManagerTools::current());
+    }
 }

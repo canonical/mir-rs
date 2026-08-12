@@ -8,7 +8,7 @@ use std::sync::Arc;
 use crate::configuration::ConfigurationOption;
 use crate::extensions::ServerExtension;
 use crate::policy::adapter::PolicyBridgeAdapter;
-use crate::policy::WindowManagementPolicy;
+use crate::policy::{WindowManagementPolicy, WindowManagerTools};
 /// A handle to a running compositor that can be used to request shutdown.
 ///
 /// Obtain this via [`MirRunner::on_start`] and store it for later use.
@@ -66,6 +66,9 @@ impl RunnerHandle {
     }
 }
 
+/// Builds the user's policy once the server hands over the tools pointer.
+type PolicyFactory = Box<dyn FnOnce(u64) -> Box<dyn mir_sys::PolicyBridge> + Send>;
+
 /// The main entry point for running a Mir compositor.
 ///
 /// Use the builder methods to configure the server, then call [`run()`](MirRunner::run)
@@ -89,7 +92,7 @@ pub struct MirRunner {
     args: Vec<String>,
     extensions: Vec<Box<dyn ServerExtension>>,
     config_options: Vec<ConfigurationOption>,
-    policy_factory: Option<Box<dyn FnOnce() -> Box<dyn mir_sys::PolicyBridge> + Send>>,
+    policy_factory: Option<PolicyFactory>,
     on_start: Option<Box<dyn FnOnce() + Send>>,
     on_stop: Option<Box<dyn FnOnce() + Send>>,
 }
@@ -144,17 +147,25 @@ impl MirRunner {
 
     /// Set the window management policy type.
     ///
-    /// The policy will be constructed with uninitialized [`WindowManagerTools`](crate::policy::WindowManagerTools)
-    /// which are automatically initialized by the framework before any policy
-    /// methods are called.
+    /// The policy is constructed by the server, which then makes
+    /// [`WindowManagerTools`] available to it — a policy never has to store or
+    /// initialize anything. Tools cannot be *called* from `Default::default`
+    /// itself, because miral is still building its window management model at
+    /// that point.
     ///
     /// The type must implement [`WindowManagementPolicy`] and [`Default`].
     pub fn add_window_management_policy<P>(mut self) -> Self
     where
         P: WindowManagementPolicy + Default,
     {
-        self.policy_factory = Some(Box::new(|| {
+        self.policy_factory = Some(Box::new(|tools_ptr| {
             let policy = P::default();
+            // Safety: `tools_ptr` is supplied by the C++ policy factory and points at
+            // the `MiralTools` owned by the policy being built, which lives for the
+            // whole server run; the policy adapter uninstalls it when it is dropped.
+            // Publishing only once the user's policy exists keeps the tools
+            // unavailable while miral's window manager is still under construction.
+            unsafe { WindowManagerTools::install(tools_ptr as *mut _) };
             Box::new(PolicyBridgeAdapter::new(policy))
         }));
         self
@@ -188,8 +199,12 @@ impl MirRunner {
         P: WindowManagementPolicy + 'static,
         F: FnOnce() -> P + Send + 'static,
     {
-        self.policy_factory = Some(Box::new(move || {
+        self.policy_factory = Some(Box::new(move |tools_ptr| {
             let policy = factory();
+            // Safety: as in `add_window_management_policy` — the pointer outlives the
+            // policy adapter, which uninstalls it on drop, and is published only once
+            // the user's policy has been constructed.
+            unsafe { WindowManagerTools::install(tools_ptr as *mut _) };
             Box::new(PolicyBridgeAdapter::new(policy))
         }));
         self
@@ -274,6 +289,9 @@ impl MirRunner {
 
         mir_sys::clear_config_callbacks();
         mir_sys::clear_runner_callbacks();
+        // Normally the policy adapter has already done this as it was dropped; this
+        // covers the case where the server never got as far as building a policy.
+        WindowManagerTools::uninstall();
 
         if result != 0 {
             Err(format!("Server exited with code {}", result).into())

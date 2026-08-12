@@ -26,14 +26,9 @@
 //! use mir::prelude::*;
 //!
 //! #[derive(Default)]
-//! struct MyPolicy {
-//!     tools: WindowManagerTools,
-//! }
+//! struct MyPolicy;
 //!
-//! impl WindowManagementPolicy for MyPolicy {
-//!     fn tools(&self) -> &WindowManagerTools { &self.tools }
-//!     fn tools_mut(&mut self) -> &mut WindowManagerTools { &mut self.tools }
-//! }
+//! impl WindowManagementPolicy for MyPolicy {}
 //!
 //! fn main() {
 //!     MirRunner::new(std::env::args())

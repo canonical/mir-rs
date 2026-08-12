@@ -85,10 +85,10 @@ All four must pass. There is no CI to catch it for you.
 - Every `unsafe` block, `unsafe fn` and `unsafe impl` needs a `// Safety:` comment stating the
   invariant that makes it sound.
 - The raw-pointer invariants for the policy live in `mir-rs/src/policy/tools.rs`: the pointer is
-  installed by the runner before any callback runs, is valid for the whole server run, and
-  dispatch is single-threaded. Anything relying on those facts should say so.
+  published once the policy has been constructed, cleared when the policy adapter is dropped,
+  and dispatch is single-threaded. Anything relying on those facts should say so.
 - Windows cross the FFI boundary as stable `u64` IDs, not as C++ objects. Keep it that way.
-- Assert rather than dereference blindly (`assert!(!self.raw.is_null(), ...)`) — a clear panic
+- Assert rather than dereference blindly (`assert!(!raw.is_null(), ...)`) — a clear panic
   beats undefined behaviour.
 
 ## Dependencies and build

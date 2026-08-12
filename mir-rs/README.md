@@ -33,14 +33,9 @@ export LD_LIBRARY_PATH=/usr/local/lib
 use mir::prelude::*;
 
 #[derive(Default)]
-struct MyPolicy {
-    tools: WindowManagerTools,
-}
+struct MyPolicy;
 
 impl WindowManagementPolicy for MyPolicy {
-    fn tools(&self) -> &WindowManagerTools { &self.tools }
-    fn tools_mut(&mut self) -> &mut WindowManagerTools { &mut self.tools }
-
     fn handle_keyboard_event(&mut self, event: &KeyboardEvent) -> bool {
         // Handle keyboard shortcuts here; return true to consume the event.
         false
@@ -81,7 +76,7 @@ This crate provides a safe, idiomatic Rust layer on top of the battle-tested mir
 
 - **`MirRunner`** — Manages the compositor lifecycle (builder pattern)
 - **`WindowManagementPolicy`** — Trait for custom window management logic
-- **`WindowManagerTools`** — API for querying and modifying windows
+- **`WindowManagerTools`** — API for querying and modifying windows, always available to a policy via `self.tools()`
 - **`Advice`** — Enum of lifecycle notifications (new window, focus change, etc.)
 - **`WindowSpecification`** — Builder for window property changes
 - **`ServerExtension`** — Trait implemented by everything passed to `MirRunner::add`

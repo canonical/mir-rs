@@ -9,12 +9,22 @@ use crate::input::{
     KeyAction, KeyboardEvent, Modifiers, PointerAction, PointerEvent, TouchAction, TouchEvent,
 };
 use crate::output::{Output, Zone};
-use crate::policy::{Advice, WindowManagementPolicy};
+use crate::policy::{Advice, WindowManagementPolicy, WindowManagerTools};
 use crate::window::{ResizeEdge, WindowInfo, WindowSpecification, WindowState};
 
 /// Adapts a user-defined `WindowManagementPolicy` into the FFI `PolicyBridge` trait.
 pub(crate) struct PolicyBridgeAdapter<P: WindowManagementPolicy> {
     policy: P,
+}
+
+impl<P: WindowManagementPolicy> Drop for PolicyBridgeAdapter<P> {
+    /// The C++ policy owns both this adapter and the `MiralTools` it was given, and
+    /// destroys the adapter first, so this runs while the tools are still alive:
+    /// after it, every [`WindowManagerTools`] handle panics instead of pointing at
+    /// freed memory.
+    fn drop(&mut self) {
+        WindowManagerTools::uninstall();
+    }
 }
 
 impl<P: WindowManagementPolicy> PolicyBridgeAdapter<P> {
@@ -36,11 +46,6 @@ impl<P: WindowManagementPolicy> PolicyBridgeAdapter<P> {
 }
 
 impl<P: WindowManagementPolicy> PolicyBridge for PolicyBridgeAdapter<P> {
-    fn set_tools_ptr(&mut self, tools_ptr: u64) {
-        let ptr = tools_ptr as *mut ffi::MiralTools;
-        self.policy.tools_mut().set_raw(ptr);
-    }
-
     fn place_new_window(
         &mut self,
         app_info: &ffi::MiralApplicationInfo,
@@ -277,5 +282,33 @@ impl<P: WindowManagementPolicy> PolicyBridge for PolicyBridgeAdapter<P> {
             .collect();
         self.policy
             .advise(Advice::RemovingFromWorkspace { windows });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::policy::tools::test_support;
+
+    struct NoopPolicy;
+
+    impl WindowManagementPolicy for NoopPolicy {}
+
+    #[test]
+    fn dropping_the_adapter_invalidates_the_tools() {
+        let _guard = test_support::lock();
+
+        let adapter = PolicyBridgeAdapter::new(NoopPolicy);
+        // Safety: the pointer is never dereferenced — no tools method is called
+        // while it is installed.
+        unsafe { WindowManagerTools::install(test_support::dummy_ptr()) };
+        assert!(WindowManagerTools::is_available());
+
+        drop(adapter);
+
+        assert!(
+            !WindowManagerTools::is_available(),
+            "the C++ tools die with the policy, so the handles must too"
+        );
     }
 }

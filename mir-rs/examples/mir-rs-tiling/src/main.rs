@@ -90,8 +90,6 @@ struct TileInfo {
 ///
 /// All windows are tiled horizontally in equal-width columns.
 struct TilingPolicy {
-    /// The window manager tools for performing actions.
-    tools: WindowManagerTools,
     /// The current application zone (usable area).
     zone: Rectangle,
     /// Per-application tile assignments (external storage pattern).
@@ -131,7 +129,6 @@ impl TilingPolicy {
 impl Default for TilingPolicy {
     fn default() -> Self {
         Self {
-            tools: WindowManagerTools::uninit(),
             zone: Rectangle::default(),
             tiles: HashMap::new(),
             app_order: Vec::new(),
@@ -142,14 +139,6 @@ impl Default for TilingPolicy {
 }
 
 impl WindowManagementPolicy for TilingPolicy {
-    fn tools(&self) -> &WindowManagerTools {
-        &self.tools
-    }
-
-    fn tools_mut(&mut self) -> &mut WindowManagerTools {
-        &mut self.tools
-    }
-
     fn place_new_window(
         &mut self,
         app_info: &ApplicationInfo,
@@ -170,15 +159,6 @@ impl WindowManagementPolicy for TilingPolicy {
                 .with_top_left(self.zone.top_left)
                 .with_size(self.zone.size)
         }
-    }
-
-    fn handle_modify_window(
-        &mut self,
-        window_info: &WindowInfo,
-        modifications: &WindowSpecification,
-    ) {
-        self.tools()
-            .modify_window(window_info.window(), modifications);
     }
 
     fn handle_window_ready(&mut self, window_info: &WindowInfo) {

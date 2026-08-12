@@ -493,10 +493,12 @@ pub mod ffi {
         fn rust_closure_invoke(closure: &mut RustClosure);
 
         /// Called by C++ to create the policy holder (reads from thread-local factory).
-        fn rust_create_policy_holder() -> Box<RustPolicyHolder>;
-
-        /// Called by C++ to set the tools pointer on the holder after creation.
-        fn rust_policy_set_tools(holder: &mut RustPolicyHolder, tools_ptr: u64);
+        ///
+        /// `tools_ptr` points at the `MiralTools` object that C++ has already
+        /// constructed, so the tools reach the Rust policy without back-patching.
+        /// The window manager is still under construction at this point: the
+        /// pointer may be recorded, but must not be called through until dispatch.
+        fn rust_create_policy_holder(tools_ptr: u64) -> Box<RustPolicyHolder>;
 
         fn rust_policy_place_new_window(
             holder: &mut RustPolicyHolder,
@@ -708,9 +710,6 @@ fn rust_closure_invoke(closure: &mut RustClosure) {
 pub struct RustPolicyHolder {
     /// The actual policy implementation, provided by the compositor author.
     pub policy: Box<dyn PolicyBridge>,
-    /// Raw pointer to the C++ MiralTools object (set by C++ after construction).
-    /// Valid for the lifetime of the runner. Only used by the `miral` crate.
-    pub tools_ptr: u64,
 }
 
 /// Internal trait used by the FFI layer to dispatch policy calls.
@@ -718,10 +717,6 @@ pub struct RustPolicyHolder {
 /// This mirrors the public `WindowManagementPolicy` trait from the `miral` crate
 /// but uses FFI-compatible types.
 pub trait PolicyBridge: Send {
-    /// Called after tools_ptr has been set on the holder — gives the policy a chance
-    /// to store a reference to the tools.
-    fn set_tools_ptr(&mut self, tools_ptr: u64);
-
     fn place_new_window(
         &mut self,
         app_info: &ffi::MiralApplicationInfo,
@@ -779,7 +774,7 @@ pub trait PolicyBridge: Send {
 
 use std::cell::RefCell;
 
-type PolicyFactoryFn = Box<dyn FnOnce() -> Box<dyn PolicyBridge>>;
+type PolicyFactoryFn = Box<dyn FnOnce(u64) -> Box<dyn PolicyBridge>>;
 type LifecycleCallback = Box<dyn FnOnce() + Send>;
 type RepeatingCallback = Box<dyn Fn() + Send>;
 type SignalCallback = Box<dyn Fn(i32) + Send>;
@@ -881,23 +876,15 @@ pub fn clear_runner_callbacks() {
 
 // --- Functions called from C++ ---
 
-fn rust_create_policy_holder() -> Box<RustPolicyHolder> {
+fn rust_create_policy_holder(tools_ptr: u64) -> Box<RustPolicyHolder> {
     let policy = POLICY_FACTORY.with(|f| {
         let factory = f
             .borrow_mut()
             .take()
             .expect("No policy factory registered. Call set_policy_factory before run.");
-        factory()
+        factory(tools_ptr)
     });
-    Box::new(RustPolicyHolder {
-        policy,
-        tools_ptr: 0,
-    })
-}
-
-fn rust_policy_set_tools(holder: &mut RustPolicyHolder, tools_ptr: u64) {
-    holder.tools_ptr = tools_ptr;
-    holder.policy.set_tools_ptr(tools_ptr);
+    Box::new(RustPolicyHolder { policy })
 }
 
 // --- Policy dispatch functions called from C++ ---
