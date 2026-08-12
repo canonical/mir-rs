@@ -347,7 +347,7 @@ impl WindowSpecification {
     }
 
     /// Convert from an FFI WindowSpecData.
-    pub(crate) fn from_ffi(data: &mir_sys::ffi::WindowSpecData) -> Self {
+    pub(crate) fn from_ffi(data: &crate::sys::ffi::WindowSpecData) -> Self {
         Self {
             top_left: if data.has_top_left {
                 Some(data.top_left.into())
@@ -552,8 +552,8 @@ impl WindowSpecification {
     }
 
     /// Convert to an FFI WindowSpecData.
-    pub(crate) fn to_ffi(&self) -> mir_sys::ffi::WindowSpecData {
-        mir_sys::ffi::WindowSpecData {
+    pub(crate) fn to_ffi(&self) -> crate::sys::ffi::WindowSpecData {
+        crate::sys::ffi::WindowSpecData {
             has_top_left: self.top_left.is_some(),
             top_left: self.top_left.unwrap_or_default().into(),
             has_size: self.size.is_some(),

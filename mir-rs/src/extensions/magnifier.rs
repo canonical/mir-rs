@@ -47,7 +47,7 @@ impl Magnifier {
     ///
     /// The server must have started with this extension registered via `.add()`.
     pub fn set_enabled(&self, enabled: bool) {
-        mir_sys::ffi::miral_magnifier_set_enabled(enabled);
+        crate::sys::ffi::miral_magnifier_set_enabled(enabled);
     }
 
     /// Update the magnification level at runtime.
@@ -56,7 +56,7 @@ impl Magnifier {
     ///
     /// The server must have started with this extension registered via `.add()`.
     pub fn set_magnification(&self, magnification: f32) {
-        mir_sys::ffi::miral_magnifier_set_magnification(magnification);
+        crate::sys::ffi::miral_magnifier_set_magnification(magnification);
     }
 
     /// Update the capture size at runtime.
@@ -65,7 +65,7 @@ impl Magnifier {
     ///
     /// The server must have started with this extension registered via `.add()`.
     pub fn set_capture_size(&self, size: Size) {
-        mir_sys::ffi::miral_magnifier_set_capture_size(size.width, size.height);
+        crate::sys::ffi::miral_magnifier_set_capture_size(size.width, size.height);
     }
 }
 
@@ -80,8 +80,8 @@ impl ServerExtension for Magnifier {
         "Magnifier"
     }
 
-    fn apply(self: Box<Self>, runner: Pin<&mut mir_sys::ffi::MiralRunner>) {
-        mir_sys::ffi::miral_runner_add_magnifier(
+    fn apply(self: Box<Self>, runner: Pin<&mut crate::sys::ffi::MiralRunner>) {
+        crate::sys::ffi::miral_runner_add_magnifier(
             runner,
             self.magnification,
             self.capture_size.width,

@@ -58,16 +58,16 @@ impl RunnerHandle {
             // Safety: the pointer is valid while the server is running,
             // and stop() is thread-safe in Mir.
             unsafe {
-                let runner = &mut *(ptr as *mut mir_sys::ffi::MiralRunner);
+                let runner = &mut *(ptr as *mut crate::sys::ffi::MiralRunner);
                 let pinned = std::pin::Pin::new_unchecked(runner);
-                mir_sys::ffi::miral_runner_stop(pinned);
+                crate::sys::ffi::miral_runner_stop(pinned);
             }
         }
     }
 }
 
 /// Builds the user's policy once the server hands over the tools pointer.
-type PolicyFactory = Box<dyn FnOnce(u64) -> Box<dyn mir_sys::PolicyBridge> + Send>;
+type PolicyFactory = Box<dyn FnOnce(u64) -> Box<dyn crate::sys::PolicyBridge> + Send>;
 
 /// The main entry point for running a Mir compositor.
 ///
@@ -240,9 +240,9 @@ impl MirRunner {
             "No window management policy set. Call add_window_management_policy() before run().",
         )?;
 
-        mir_sys::set_policy_factory(Box::new(policy_factory));
+        crate::sys::set_policy_factory(Box::new(policy_factory));
 
-        let mut runner = mir_sys::ffi::miral_runner_new(&args);
+        let mut runner = crate::sys::ffi::miral_runner_new(&args);
 
         for ext in extensions {
             ext.apply(runner.pin_mut());
@@ -255,20 +255,20 @@ impl MirRunner {
         let runner_handle = RunnerHandle::new(runner_ptr);
 
         if let Some(on_start) = on_start {
-            mir_sys::set_on_start_callback(Box::new(on_start));
-            mir_sys::ffi::miral_runner_register_start_callback(runner.pin_mut());
+            crate::sys::set_on_start_callback(Box::new(on_start));
+            crate::sys::ffi::miral_runner_register_start_callback(runner.pin_mut());
         }
         if let Some(on_stop) = on_stop {
-            mir_sys::set_on_stop_callback(Box::new(on_stop));
-            mir_sys::ffi::miral_runner_register_stop_callback(runner.pin_mut());
+            crate::sys::set_on_stop_callback(Box::new(on_stop));
+            crate::sys::ffi::miral_runner_register_stop_callback(runner.pin_mut());
         }
 
         let handle_for_cleanup = runner_handle.clone();
 
         let mut config_descs = Vec::new();
         for option in config_options {
-            let callback_id = mir_sys::register_config_callback(option.callback);
-            config_descs.push(mir_sys::ffi::ConfigOptionDesc {
+            let callback_id = crate::sys::register_config_callback(option.callback);
+            config_descs.push(crate::sys::ffi::ConfigOptionDesc {
                 name: option.name,
                 description: option.description,
                 option_type: option.option_type,
@@ -281,14 +281,14 @@ impl MirRunner {
             });
         }
 
-        let result = mir_sys::ffi::miral_runner_run_with_config(runner.pin_mut(), &config_descs);
+        let result = crate::sys::ffi::miral_runner_run_with_config(runner.pin_mut(), &config_descs);
 
         handle_for_cleanup
             .runner_ptr
             .store(0, std::sync::atomic::Ordering::Release);
 
-        mir_sys::clear_config_callbacks();
-        mir_sys::clear_runner_callbacks();
+        crate::sys::clear_config_callbacks();
+        crate::sys::clear_runner_callbacks();
         // Normally the policy adapter has already done this as it was dropped; this
         // covers the case where the server never got as far as building a policy.
         WindowManagerTools::uninstall();

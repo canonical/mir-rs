@@ -11,13 +11,18 @@ keywords = ["mir", "wayland", "compositor", "window-manager", "tiling"]
 categories = ["gui", "os"]
 
 [dependencies]
-mir-sys = { path = "../mir-rs-sys" }
 bitflags = "2"
+cxx = { version = ">=1.0.167" }
 glam = { workspace = true, optional = true }
 
 [features]
 # Experimental: exposes the surface transform via
 # `WindowSpecification::with_transform`. Pulls in `glam` for the matrix type and
-# links `mir-sys` against `mirserver`. This is a temporary "necessary evil" — the
+# links `mir` against `mirserver`. This is a temporary "necessary evil" — the
 # underlying `mir::scene::Surface` transform is expected to be removed upstream.
-experimental = ["dep:glam", "mir-sys/experimental"]
+experimental = ["dep:glam"]
+
+[build-dependencies]
+cxx-build = { version = ">=1.0.167, <1.0.195" }
+bindgen = "0.71"
+pkg-config = "0.3"

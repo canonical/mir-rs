@@ -81,13 +81,13 @@ impl ServerExtension for Decorations {
         }
     }
 
-    fn apply(self: Box<Self>, runner: Pin<&mut mir_sys::ffi::MiralRunner>) {
+    fn apply(self: Box<Self>, runner: Pin<&mut crate::sys::ffi::MiralRunner>) {
         let mode = match self.strategy {
             Strategy::PreferCsd => 1,
             Strategy::PreferSsd => 2,
             Strategy::AlwaysSsd => 3,
             Strategy::AlwaysCsd => 4,
         };
-        mir_sys::ffi::miral_runner_add_decorations(runner, mode);
+        crate::sys::ffi::miral_runner_add_decorations(runner, mode);
     }
 }

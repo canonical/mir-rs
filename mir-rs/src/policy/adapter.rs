@@ -1,7 +1,7 @@
-//! Adapter that bridges mir-rs WindowManagementPolicy to mir-sys PolicyBridge.
+//! Adapter that bridges the `mir` WindowManagementPolicy to the internal FFI policy bridge.
 
-use mir_sys::PolicyBridge;
-use mir_sys::ffi;
+use crate::sys::PolicyBridge;
+use crate::sys::ffi;
 
 use crate::application::ApplicationInfo;
 use crate::geometry::{Displacement, Point, Rectangle, Size};

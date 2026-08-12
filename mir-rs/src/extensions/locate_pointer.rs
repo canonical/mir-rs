@@ -33,7 +33,7 @@ impl ServerExtension for LocatePointer {
         "LocatePointer"
     }
 
-    fn apply(self: Box<Self>, runner: Pin<&mut mir_sys::ffi::MiralRunner>) {
-        mir_sys::ffi::miral_runner_add_locate_pointer(runner, self.enabled);
+    fn apply(self: Box<Self>, runner: Pin<&mut crate::sys::ffi::MiralRunner>) {
+        crate::sys::ffi::miral_runner_add_locate_pointer(runner, self.enabled);
     }
 }

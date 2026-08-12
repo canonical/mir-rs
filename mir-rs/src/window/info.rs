@@ -49,7 +49,7 @@ pub struct WindowInfo {
 
 impl WindowInfo {
     /// Create a WindowInfo from an FFI snapshot.
-    pub(crate) fn from_ffi(snapshot: &mir_sys::ffi::WindowInfoSnapshot, window_id: u64) -> Self {
+    pub(crate) fn from_ffi(snapshot: &crate::sys::ffi::WindowInfoSnapshot, window_id: u64) -> Self {
         Self {
             window: Window::from_ffi(window_id, snapshot.top_left.into(), snapshot.size.into()),
             name: snapshot.name.clone(),

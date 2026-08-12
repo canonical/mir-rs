@@ -33,7 +33,7 @@ impl ServerExtension for StickyKeys {
         "StickyKeys"
     }
 
-    fn apply(self: Box<Self>, runner: Pin<&mut mir_sys::ffi::MiralRunner>) {
-        mir_sys::ffi::miral_runner_add_sticky_keys(runner, self.enabled);
+    fn apply(self: Box<Self>, runner: Pin<&mut crate::sys::ffi::MiralRunner>) {
+        crate::sys::ffi::miral_runner_add_sticky_keys(runner, self.enabled);
     }
 }

@@ -33,7 +33,7 @@ impl ServerExtension for CursorScale {
         "CursorScale"
     }
 
-    fn apply(self: Box<Self>, runner: Pin<&mut mir_sys::ffi::MiralRunner>) {
-        mir_sys::ffi::miral_runner_add_cursor_scale(runner, self.scale);
+    fn apply(self: Box<Self>, runner: Pin<&mut crate::sys::ffi::MiralRunner>) {
+        crate::sys::ffi::miral_runner_add_cursor_scale(runner, self.scale);
     }
 }
