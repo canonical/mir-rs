@@ -1397,6 +1397,14 @@ Rectangle miral_tools_place_and_size_for_state(MiralTools const &tools,
   return to_rectangle(mir::geometry::Rectangle{result_top_left, result_size});
 }
 
+void miral_tools_invoke_under_lock(MiralTools &tools,
+                                   rust::Box<RustClosure> callback) {
+  // miral takes a std::function, which must be copy-constructible, but
+  // rust::Box is move-only — so share ownership through a shared_ptr.
+  auto holder = std::make_shared<rust::Box<RustClosure>>(std::move(callback));
+  tools.inner.invoke_under_lock([holder] { rust_closure_invoke(**holder); });
+}
+
 // --- Window queries ---
 
 Point miral_window_top_left(MiralWindow const &window) {

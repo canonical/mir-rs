@@ -465,6 +465,10 @@ pub mod ffi {
             new_state: i32,
             rect: &Rectangle,
         ) -> Rectangle;
+        /// Invoke a Rust closure while holding the window management model lock.
+        ///
+        /// The closure is invoked synchronously, before this function returns.
+        fn miral_tools_invoke_under_lock(tools: Pin<&mut MiralTools>, callback: Box<RustClosure>);
 
         // --- Window queries ---
 
@@ -481,6 +485,12 @@ pub mod ffi {
     // --- Rust exports to C++ (for policy dispatch) ---
     extern "Rust" {
         type RustPolicyHolder;
+        type RustClosure;
+
+        /// Called by C++ to run a Rust closure that was handed across the boundary.
+        ///
+        /// Running an already-consumed closure is a no-op.
+        fn rust_closure_invoke(closure: &mut RustClosure);
 
         /// Called by C++ to create the policy holder (reads from thread-local factory).
         fn rust_create_policy_holder() -> Box<RustPolicyHolder>;
@@ -664,6 +674,31 @@ pub mod ffi {
         fn rust_config_callback_optional_bool(callback_id: u32, has_value: bool, value: bool);
         /// Dispatch a multi-value string list config option callback.
         fn rust_config_callback_multi(callback_id: u32, values: &[String]);
+    }
+}
+
+/// A Rust closure handed to C++ to be invoked later.
+///
+/// The closure is stored behind an `Option` so that it can be consumed by value:
+/// `rust_closure_invoke` takes it out and runs it, and any subsequent invocation is
+/// a no-op. That keeps an `FnOnce` sound even if C++ were to call back twice.
+pub struct RustClosure(Option<Box<dyn FnOnce() + Send>>);
+
+/// Box up a closure so it can be passed across the FFI boundary.
+///
+/// The returned box is owned by C++ until it is handed back to
+/// `rust_closure_invoke`, which consumes the closure.
+pub fn rust_closure_new<F>(callback: F) -> Box<RustClosure>
+where
+    F: FnOnce() + Send + 'static,
+{
+    Box::new(RustClosure(Some(Box::new(callback))))
+}
+
+/// Run the closure held by `closure`, if it has not been run already.
+fn rust_closure_invoke(closure: &mut RustClosure) {
+    if let Some(callback) = closure.0.take() {
+        callback();
     }
 }
 
@@ -1252,5 +1287,38 @@ fn rust_config_callback_multi(callback_id: u32, values: &[String]) {
     let mut callbacks = CONFIG_CALLBACKS.lock().unwrap();
     if let Some(ConfigCallback::Multi(cb)) = callbacks.get_mut(callback_id as usize) {
         cb(values.to_vec());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::{AtomicU32, Ordering};
+    use std::sync::Arc;
+
+    #[test]
+    fn boxed_closure_runs_when_invoked() {
+        let calls = Arc::new(AtomicU32::new(0));
+        let counter = Arc::clone(&calls);
+        let mut closure = rust_closure_new(move || {
+            counter.fetch_add(1, Ordering::SeqCst);
+        });
+
+        assert_eq!(calls.load(Ordering::SeqCst), 0);
+        rust_closure_invoke(&mut closure);
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn boxed_closure_is_consumed_after_first_invocation() {
+        let calls = Arc::new(AtomicU32::new(0));
+        let counter = Arc::clone(&calls);
+        let mut closure = rust_closure_new(move || {
+            counter.fetch_add(1, Ordering::SeqCst);
+        });
+
+        rust_closure_invoke(&mut closure);
+        rust_closure_invoke(&mut closure);
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
     }
 }

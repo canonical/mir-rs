@@ -46,6 +46,7 @@ struct ZoneSnapshot;
 struct WindowSpecData;
 struct ConfigOptionDesc;
 struct RustPolicyHolder;
+struct RustClosure;
 
 // Opaque C++ types exposed to Rust — wrapping the actual miral types
 class MiralWindow
@@ -201,6 +202,9 @@ Rectangle miral_tools_place_and_size_for_state(
     uint64_t window_id,
     int32_t new_state,
     Rectangle const& rect);
+// Acquire the window management model lock and run the Rust closure under it.
+// The closure is invoked synchronously, before this function returns.
+void miral_tools_invoke_under_lock(MiralTools& tools, rust::Box<RustClosure> callback);
 
 // Window queries
 Point miral_window_top_left(MiralWindow const& window);

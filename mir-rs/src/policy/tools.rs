@@ -229,6 +229,59 @@ impl WindowManagerTools {
         )
         .into()
     }
+
+    /// Acquire the window management model lock and run `callback` under it.
+    ///
+    /// This is how a thread that is **not** running a policy callback can safely
+    /// call other [`WindowManagerTools`] methods: miral guards its window model
+    /// with a lock, and every tools method expects that lock to be held.
+    ///
+    /// The callback runs synchronously, on the calling thread, before this method
+    /// returns.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the tools have not been initialized yet.
+    ///
+    /// A panic inside `callback` cannot unwind through the C++ frames that hold
+    /// the lock, so it aborts the process. Handle errors inside the callback.
+    ///
+    /// # Deadlocks
+    ///
+    /// Never call this from inside a policy callback (anything dispatched through
+    /// [`WindowManagementPolicy`](crate::policy::WindowManagementPolicy)). Those
+    /// already run under the lock, and the lock is not recursive, so re-acquiring
+    /// it deadlocks the compositor. From within a policy, call the tools methods
+    /// directly instead.
+    ///
+    /// Similarly, keep the callback short and never block in it — the whole
+    /// window manager is stalled while it runs.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use std::sync::atomic::{AtomicBool, Ordering};
+    /// use std::sync::Arc;
+    ///
+    /// use mir::prelude::*;
+    ///
+    /// // On a thread that is not running policy callbacks:
+    /// fn tidy_up(tools: &WindowManagerTools, done: Arc<AtomicBool>) {
+    ///     tools.invoke_under_lock(move || {
+    ///         // Tools calls made here are serialised against the compositor.
+    ///         done.store(true, Ordering::SeqCst);
+    ///     });
+    /// }
+    /// ```
+    pub fn invoke_under_lock<F>(&self, callback: F)
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        mir_sys::ffi::miral_tools_invoke_under_lock(
+            self.pin_mut(),
+            mir_sys::rust_closure_new(callback),
+        );
+    }
 }
 
 // WindowManagerTools is not Clone (raw pointer semantics) but can be Debug
