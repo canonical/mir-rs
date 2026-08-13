@@ -82,4 +82,5 @@ pub mod prelude {
         PlacementGravity, PlacementHints, PointerConfinementState, ResizeEdge, ShellChrome,
         TiledEdges, Window, WindowInfo, WindowSpecification, WindowState, WindowType,
     };
+    pub use crate::workspace::Workspace;
 }

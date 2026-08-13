@@ -470,6 +470,39 @@ pub mod ffi {
         /// The closure is invoked synchronously, before this function returns.
         fn miral_tools_invoke_under_lock(tools: Pin<&mut MiralTools>, callback: Box<RustClosure>);
 
+        // --- Workspaces ---
+
+        /// Create a workspace and return its opaque ID.
+        fn miral_tools_create_workspace(tools: Pin<&mut MiralTools>) -> u64;
+        /// Add a window tree to a workspace, by their IDs.
+        fn miral_tools_add_tree_to_workspace(
+            tools: Pin<&mut MiralTools>,
+            window_id: u64,
+            workspace_id: u64,
+        );
+        /// Remove a window tree from a workspace, by their IDs.
+        fn miral_tools_remove_tree_from_workspace(
+            tools: Pin<&mut MiralTools>,
+            window_id: u64,
+            workspace_id: u64,
+        );
+        /// Move all windows from one workspace to another, by their IDs.
+        fn miral_tools_move_workspace_content_to_workspace(
+            tools: Pin<&mut MiralTools>,
+            to_workspace_id: u64,
+            from_workspace_id: u64,
+        );
+        /// Collect the IDs of the workspaces that contain the given window.
+        fn miral_tools_workspaces_containing_window(
+            tools: Pin<&mut MiralTools>,
+            window_id: u64,
+        ) -> Vec<u64>;
+        /// Collect the IDs of the windows contained in the given workspace.
+        fn miral_tools_windows_in_workspace(
+            tools: Pin<&mut MiralTools>,
+            workspace_id: u64,
+        ) -> Vec<u64>;
+
         // --- Window queries ---
 
         /// Get the top-left position of a window.

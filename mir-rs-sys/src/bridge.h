@@ -77,6 +77,10 @@ public:
     miral::WindowManagerTools inner;
     // Registry mapping window IDs to miral::Window objects
     std::unordered_map<uint64_t, miral::Window> window_registry;
+    // Registry mapping workspace IDs to the miral::Workspace that owns them.
+    // The shared_ptr keeps the (opaque, forward-declared) workspace alive so a
+    // stable u64 handle can be mapped back to the C++ object.
+    std::unordered_map<uint64_t, std::shared_ptr<miral::Workspace>> workspace_registry;
 
     explicit MiralTools(miral::WindowManagerTools t) : inner(std::move(t)) {}
 
@@ -86,6 +90,11 @@ public:
     void unregister_window(uint64_t id);
     // Look up a window by ID (returns nullptr if not found)
     miral::Window const* lookup_window(uint64_t id) const;
+
+    // Register a workspace so it can be looked up by ID later. Returns its ID.
+    uint64_t register_workspace(std::shared_ptr<miral::Workspace> const& workspace);
+    // Look up a workspace by ID (returns nullptr if not found)
+    std::shared_ptr<miral::Workspace> lookup_workspace(uint64_t id) const;
 };
 
 class MiralRunner
@@ -205,6 +214,14 @@ Rectangle miral_tools_place_and_size_for_state(
 // Acquire the window management model lock and run the Rust closure under it.
 // The closure is invoked synchronously, before this function returns.
 void miral_tools_invoke_under_lock(MiralTools& tools, rust::Box<RustClosure> callback);
+
+// Workspaces
+uint64_t miral_tools_create_workspace(MiralTools& tools);
+void miral_tools_add_tree_to_workspace(MiralTools& tools, uint64_t window_id, uint64_t workspace_id);
+void miral_tools_remove_tree_from_workspace(MiralTools& tools, uint64_t window_id, uint64_t workspace_id);
+void miral_tools_move_workspace_content_to_workspace(MiralTools& tools, uint64_t to_workspace_id, uint64_t from_workspace_id);
+rust::Vec<uint64_t> miral_tools_workspaces_containing_window(MiralTools& tools, uint64_t window_id);
+rust::Vec<uint64_t> miral_tools_windows_in_workspace(MiralTools& tools, uint64_t workspace_id);
 
 // Window queries
 Point miral_window_top_left(MiralWindow const& window);

@@ -25,6 +25,14 @@ impl Workspace {
     pub fn id(&self) -> u64 {
         self.id
     }
+
+    /// Build a handle from a raw workspace ID returned by the FFI layer.
+    ///
+    /// The single conversion seam the crate uses at the FFI boundary, mirroring
+    /// [`Window::from_ffi`](crate::window::Window::from_ffi).
+    pub(crate) fn from_ffi(id: u64) -> Self {
+        Self { id }
+    }
 }
 
 #[cfg(test)]
@@ -34,6 +42,12 @@ mod tests {
     #[test]
     fn from_id_round_trips() {
         assert_eq!(Workspace::from_id(42).id(), 42);
+    }
+
+    #[test]
+    fn from_ffi_round_trips() {
+        assert_eq!(Workspace::from_ffi(7).id(), 7);
+        assert_eq!(Workspace::from_ffi(7), Workspace::from_id(7));
     }
 
     #[test]

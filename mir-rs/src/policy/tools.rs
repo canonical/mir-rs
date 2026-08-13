@@ -7,6 +7,7 @@ use std::sync::atomic::{AtomicPtr, Ordering};
 use crate::geometry::{Displacement, Point, Rectangle, Size};
 use crate::output::Zone;
 use crate::window::{Window, WindowInfo, WindowSpecification, WindowState};
+use crate::workspace::Workspace;
 
 /// The C++ tools object for the running server.
 ///
@@ -279,6 +280,91 @@ impl WindowManagerTools {
             &ffi_rect,
         )
         .into()
+    }
+
+    /// Create a new workspace.
+    ///
+    /// Workspaces are a purely associative grouping of windows; miral attaches no
+    /// behaviour to them. It is up to the policy to decide what a workspace means
+    /// (for example, showing only the windows of an "active" workspace). The
+    /// returned [`Workspace`] handle is used with the other workspace methods.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the tools are not available (see [`is_available`](Self::is_available)).
+    pub fn create_workspace(&self) -> Workspace {
+        let id = mir_sys::ffi::miral_tools_create_workspace(self.pin_mut());
+        Workspace::from_ffi(id)
+    }
+
+    /// Add a window (and its child tree) to a workspace.
+    ///
+    /// A window may belong to more than one workspace.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the tools are not available (see [`is_available`](Self::is_available)).
+    pub fn add_tree_to_workspace(&self, window: &Window, workspace: &Workspace) {
+        mir_sys::ffi::miral_tools_add_tree_to_workspace(
+            self.pin_mut(),
+            window.id(),
+            workspace.id(),
+        );
+    }
+
+    /// Remove a window (and its child tree) from a workspace.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the tools are not available (see [`is_available`](Self::is_available)).
+    pub fn remove_tree_from_workspace(&self, window: &Window, workspace: &Workspace) {
+        mir_sys::ffi::miral_tools_remove_tree_from_workspace(
+            self.pin_mut(),
+            window.id(),
+            workspace.id(),
+        );
+    }
+
+    /// Move every window associated with `from` into `to`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the tools are not available (see [`is_available`](Self::is_available)).
+    pub fn move_workspace_content_to_workspace(&self, to: &Workspace, from: &Workspace) {
+        mir_sys::ffi::miral_tools_move_workspace_content_to_workspace(
+            self.pin_mut(),
+            to.id(),
+            from.id(),
+        );
+    }
+
+    /// Get every workspace that contains the given window.
+    ///
+    /// Returns a snapshot: unlike miral's callback-based enumeration, the caller
+    /// may freely add or remove windows from these workspaces afterwards.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the tools are not available (see [`is_available`](Self::is_available)).
+    pub fn workspaces_containing(&self, window: &Window) -> Vec<Workspace> {
+        let ids =
+            mir_sys::ffi::miral_tools_workspaces_containing_window(self.pin_mut(), window.id());
+        ids.into_iter().map(Workspace::from_ffi).collect()
+    }
+
+    /// Get every window contained in the given workspace.
+    ///
+    /// Returns a snapshot: unlike miral's callback-based enumeration, the caller
+    /// may freely add or remove windows from the workspace afterwards.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the tools are not available (see [`is_available`](Self::is_available)).
+    pub fn windows_in_workspace(&self, workspace: &Workspace) -> Vec<Window> {
+        let ids = mir_sys::ffi::miral_tools_windows_in_workspace(self.pin_mut(), workspace.id());
+        ids.into_iter()
+            .map(|id| Window::from_ffi(id, Point::default(), Size::default()))
+            .collect()
     }
 
     /// Acquire the window management model lock and run `callback` under it.

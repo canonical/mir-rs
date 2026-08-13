@@ -389,6 +389,22 @@ miral::Window const *MiralTools::lookup_window(uint64_t id) const {
   return nullptr;
 }
 
+uint64_t
+MiralTools::register_workspace(std::shared_ptr<miral::Workspace> const &workspace) {
+  auto id = reinterpret_cast<uint64_t>(workspace.get());
+  if (id != 0)
+    workspace_registry[id] = workspace;
+  return id;
+}
+
+std::shared_ptr<miral::Workspace>
+MiralTools::lookup_workspace(uint64_t id) const {
+  auto it = workspace_registry.find(id);
+  if (it != workspace_registry.end())
+    return it->second;
+  return nullptr;
+}
+
 // --- RustWindowManagementPolicy ---
 // C++ subclass that dispatches all virtual methods to Rust
 
@@ -1396,6 +1412,70 @@ void miral_tools_invoke_under_lock(MiralTools &tools,
   // rust::Box is move-only — so share ownership through a shared_ptr.
   auto holder = std::make_shared<rust::Box<RustClosure>>(std::move(callback));
   tools.inner.invoke_under_lock([holder] { rust_closure_invoke(**holder); });
+}
+
+// --- Workspaces ---
+
+uint64_t miral_tools_create_workspace(MiralTools &tools) {
+  auto workspace = tools.inner.create_workspace();
+  return tools.register_workspace(workspace);
+}
+
+void miral_tools_add_tree_to_workspace(MiralTools &tools, uint64_t window_id,
+                                       uint64_t workspace_id) {
+  auto const *w = tools.lookup_window(window_id);
+  auto workspace = tools.lookup_workspace(workspace_id);
+  if (w && workspace)
+    tools.inner.add_tree_to_workspace(*w, workspace);
+}
+
+void miral_tools_remove_tree_from_workspace(MiralTools &tools,
+                                            uint64_t window_id,
+                                            uint64_t workspace_id) {
+  auto const *w = tools.lookup_window(window_id);
+  auto workspace = tools.lookup_workspace(workspace_id);
+  if (w && workspace)
+    tools.inner.remove_tree_from_workspace(*w, workspace);
+}
+
+void miral_tools_move_workspace_content_to_workspace(MiralTools &tools,
+                                                     uint64_t to_workspace_id,
+                                                     uint64_t from_workspace_id) {
+  auto to_workspace = tools.lookup_workspace(to_workspace_id);
+  auto from_workspace = tools.lookup_workspace(from_workspace_id);
+  if (to_workspace && from_workspace)
+    tools.inner.move_workspace_content_to_workspace(to_workspace, from_workspace);
+}
+
+rust::Vec<uint64_t> miral_tools_workspaces_containing_window(MiralTools &tools,
+                                                             uint64_t window_id) {
+  rust::Vec<uint64_t> ids;
+  auto const *w = tools.lookup_window(window_id);
+  if (!w)
+    return ids;
+  // Collect up-front: miral warns that mutating workspaces mid-enumeration is
+  // unsafe, and returning a snapshot lets the Rust caller do so freely.
+  tools.inner.for_each_workspace_containing(
+      *w, [&](std::shared_ptr<miral::Workspace> const &workspace) {
+        ids.push_back(tools.register_workspace(workspace));
+      });
+  return ids;
+}
+
+rust::Vec<uint64_t> miral_tools_windows_in_workspace(MiralTools &tools,
+                                                     uint64_t workspace_id) {
+  rust::Vec<uint64_t> ids;
+  auto workspace = tools.lookup_workspace(workspace_id);
+  if (!workspace)
+    return ids;
+  tools.inner.for_each_window_in_workspace(
+      workspace, [&](miral::Window const &window) {
+        tools.register_window(window);
+        auto id = window_to_id(window);
+        if (id != 0)
+          ids.push_back(id);
+      });
+  return ids;
 }
 
 // --- Window queries ---
