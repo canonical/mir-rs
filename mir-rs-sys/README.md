@@ -52,6 +52,20 @@ there must be mirrored in the `#[cxx::bridge]` module in `src/lib.rs`.
 Minimum library versions (enforced by `build.rs`, so a too-old system fails at configure time):
 `miral` 6.0, `mircore` 2.29, `mircommon` 2.29.
 
+## Experimental feature
+
+The optional `experimental` cargo feature builds the surface-transform support used
+by [`mir`](../mir-rs/README.md)'s `WindowSpecification::with_transform`. It calls
+`mir::scene::Surface::set_transformation`, which is only declared in the
+`mirserver-internal` headers, so enabling it makes `build.rs` additionally probe and
+**link against `mirserver`** (package `libmirserver-dev`, minimum version 2.29) and
+compile the transform code path under a `MIR_RS_EXPERIMENTAL` define.
+
+This is a temporary **"necessary evil"**: the underlying surface transform is
+expected to be removed from Mir upstream, so the feature and its `mirserver`
+dependency are opt-in and off by default. The default build never touches
+`mirserver`.
+
 ## License
 
 This project is licensed under the GNU General Public License version 2 or later.

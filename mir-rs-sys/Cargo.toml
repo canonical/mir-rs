@@ -14,6 +14,13 @@ links = "miral"
 [lib]
 crate-type = ["staticlib", "rlib"]
 
+[features]
+# Experimental: exposes the surface transform, which requires linking against
+# `mirserver` (via the `mirserver-internal` headers). This is a temporary
+# "necessary evil" — the underlying `mir::scene::Surface::transform` is expected
+# to disappear in a future Mir release. Off by default.
+experimental = []
+
 [dependencies]
 cxx = { version = ">=1.0.167" }
 

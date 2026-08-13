@@ -83,4 +83,10 @@ pub mod prelude {
         TiledEdges, Window, WindowInfo, WindowSpecification, WindowState, WindowType,
     };
     pub use crate::workspace::Workspace;
+
+    /// **Experimental.** Re-exported so `WindowSpecification::with_transform` can
+    /// be called via `use mir::prelude::*`. Gated behind the `experimental`
+    /// feature; see [`WindowSpecification::with_transform`](crate::window::WindowSpecification::with_transform).
+    #[cfg(feature = "experimental")]
+    pub use glam::Mat4;
 }

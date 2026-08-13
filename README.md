@@ -50,6 +50,24 @@ part-way through the C++ build.
 A C++ toolchain is also required (the bridge compiles `mir-rs-sys/src/bridge.cpp`), and the
 Rust toolchain must be at least **1.82.0** (edition 2021).
 
+### Experimental features
+
+The optional `experimental` cargo feature exposes
+`WindowSpecification::with_transform`, which sets the 4×4 transform of the
+`mir::scene::Surface` backing a window (using the [`glam`](https://crates.io/crates/glam)
+`Mat4` type). Enabling it makes `mir-sys` **link against `mirserver`** (via the
+`mirserver-internal` headers, package `libmirserver-dev`), because that is the only
+place `mir::scene::Surface::set_transformation` is declared.
+
+This is a deliberate, temporary **"necessary evil"**: the surface transform is
+expected to be removed from Mir upstream, at which point the feature and its
+`mirserver` dependency will disappear. It is therefore **off by default** and only
+enabled explicitly:
+
+```bash
+cargo build -p mir --features experimental
+```
+
 If you built Mir from source rather than installing the packages, point the loader at it:
 
 

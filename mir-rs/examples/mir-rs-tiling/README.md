@@ -11,6 +11,12 @@ This example demonstrates:
 
 Windows are tiled in a simple horizontal split layout — each new window gets an equal fraction of the available screen width.
 
+> **Note:** this example does not use the experimental surface transform. That
+> lives behind the `mir` crate's `experimental` feature
+> (`WindowSpecification::with_transform`), which links against `mirserver` and is a
+> temporary measure expected to be removed upstream. See the
+> [workspace README](../../../README.md#experimental-features) for details.
+
 ## System Requirements
 
 The `mir` crate requires the **miral C++ library** to be installed on your system.

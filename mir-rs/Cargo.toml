@@ -13,3 +13,11 @@ categories = ["gui", "os"]
 [dependencies]
 mir-sys = { path = "../mir-rs-sys" }
 bitflags = "2"
+glam = { workspace = true, optional = true }
+
+[features]
+# Experimental: exposes the surface transform via
+# `WindowSpecification::with_transform`. Pulls in `glam` for the matrix type and
+# links `mir-sys` against `mirserver`. This is a temporary "necessary evil" — the
+# underlying `mir::scene::Surface` transform is expected to be removed upstream.
+experimental = ["dep:glam", "mir-sys/experimental"]

@@ -121,6 +121,28 @@ fn main() {
     // Add the src directory so generated CXX code can find bridge.h
     cxx_build.include("src");
 
+    // Experimental: the surface transform is applied by calling
+    // `mir::scene::Surface::set_transformation`, which is only declared in the
+    // `mirserver-internal` headers and needs `mirserver` linked in. This is an
+    // opt-in "necessary evil" gated behind the `experimental` feature; the plain
+    // build never touches mirserver.
+    let experimental = env::var_os("CARGO_FEATURE_EXPERIMENTAL").is_some();
+    let mut experimental_libs: Vec<String> = Vec::new();
+    let mut experimental_link_paths: Vec<PathBuf> = Vec::new();
+    if experimental {
+        let mir_server = probe(
+            "mirserver-internal",
+            MIR_MIN_VERSION,
+            "On Ubuntu/Debian:\n\n    sudo apt install libmirserver-dev",
+        );
+        for path in &mir_server.include_paths {
+            cxx_build.include(path);
+        }
+        cxx_build.define("MIR_RS_EXPERIMENTAL", None);
+        experimental_libs = mir_server.libs.clone();
+        experimental_link_paths = mir_server.link_paths.clone();
+    }
+
     cxx_build
         .file("src/bridge.cpp")
         .std("c++23")
@@ -134,10 +156,19 @@ fn main() {
         println!("cargo:rustc-link-search=native={}", path.display());
     }
 
+    // Link against mirserver only when the experimental transform API is enabled.
+    for lib in &experimental_libs {
+        println!("cargo:rustc-link-lib={}", lib);
+    }
+    for path in &experimental_link_paths {
+        println!("cargo:rustc-link-search=native={}", path.display());
+    }
+
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=src/lib.rs");
     println!("cargo:rerun-if-changed=src/bridge.cpp");
     println!("cargo:rerun-if-changed=src/bridge.h");
+    println!("cargo:rerun-if-env-changed=CARGO_FEATURE_EXPERIMENTAL");
     println!("cargo:rerun-if-env-changed=PKG_CONFIG_PATH");
     println!("cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR");
 }

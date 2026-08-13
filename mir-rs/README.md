@@ -27,6 +27,25 @@ Afterwards, set your `LD_LIBRARY_PATH` to include the `miral` library's installa
 export LD_LIBRARY_PATH=/usr/local/lib
 ```
 
+### Experimental feature
+
+The optional `experimental` cargo feature enables
+[`WindowSpecification::with_transform`], which sets the 4×4 transform of the
+`mir::scene::Surface` behind a window (as a [`glam`](https://crates.io/crates/glam)
+`Mat4`, re-exported from the prelude). Enabling it makes the underlying `mir-sys`
+crate **link against `mirserver`** (package `libmirserver-dev`), since that is the
+only place `mir::scene::Surface::set_transformation` is declared.
+
+This is a temporary **"necessary evil"** — the surface transform is expected to be
+removed upstream, so both the API and its `mirserver` dependency will go away with
+it. It is off by default:
+
+```bash
+cargo add mir --features experimental
+```
+
+[`WindowSpecification::with_transform`]: https://docs.rs/mir
+
 ## Quick Start
 
 ```rust

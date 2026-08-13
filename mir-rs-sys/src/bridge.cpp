@@ -62,6 +62,15 @@ class Surface;
 }
 } // namespace mir
 
+#ifdef MIR_RS_EXPERIMENTAL
+// Experimental: applying the surface transform needs the full definition of
+// `mir::scene::Surface` (declared in the mirserver-internal headers) plus glm's
+// `make_mat4`. This is only pulled in when the `experimental` feature links
+// against mirserver.
+#include <glm/gtc/type_ptr.hpp>
+#include <mir/scene/surface.h>
+#endif
+
 namespace mir_sys {
 
 // Global atomic pointer to the active ExternalClientLauncher (set during server
@@ -272,6 +281,11 @@ static WindowSpecData spec_to_ffi(miral::WindowSpecification const &spec,
       spec.parent_size().has_value(),
       spec.parent_size().has_value() ? to_size(spec.parent_size().value())
                                   : Size{0, 0},
+      // Experimental transform: miral has no getter for the surface transform,
+      // so it is never round-tripped out of a specification.
+      false,
+      {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+       0.0f, 0.0f, 0.0f, 0.0f},
   };
 }
 
@@ -1259,6 +1273,18 @@ void miral_tools_modify_window_by_id(MiralTools &tools, uint64_t window_id,
 
   auto &info = tools.inner.info_for(*w);
   tools.inner.modify_window(info, miral_spec);
+
+#ifdef MIR_RS_EXPERIMENTAL
+  // Experimental: the transform is not a miral::WindowSpecification field, so it
+  // is applied directly to the backing surface. This is a temporary measure —
+  // `mir::scene::Surface`'s transform is expected to be removed upstream.
+  if (spec.has_transform) {
+    if (auto surface =
+            static_cast<std::shared_ptr<mir::scene::Surface>>(*w)) {
+      surface->set_transformation(glm::make_mat4(spec.transform.data()));
+    }
+  }
+#endif
 }
 
 void miral_tools_drag_window_by_id(MiralTools &tools, uint64_t window_id,

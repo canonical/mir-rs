@@ -256,6 +256,12 @@ pub mod ffi {
         alpha: f32,
         has_parent_size: bool,
         parent_size: Size,
+        /// Experimental: the 4x4 surface transform as a column-major matrix.
+        /// Applied via `mir::scene::Surface::set_transformation` after the
+        /// modification is applied; only honoured when `mir-sys` is built with
+        /// the `experimental` feature.
+        has_transform: bool,
+        transform: [f32; 16],
     }
 
     /// Descriptor for a configuration option, passed from Rust to C++.

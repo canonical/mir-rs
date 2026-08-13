@@ -52,6 +52,11 @@ pub struct WindowSpecification {
     pub(crate) tiled_edges: Option<TiledEdges>,
     pub(crate) alpha: Option<f32>,
     pub(crate) parent_size: Option<Size>,
+    /// Experimental: the surface transform as a column-major 4x4 matrix.
+    ///
+    /// Stored as a raw `[f32; 16]` so the FFI conversion stays independent of the
+    /// `experimental` feature; the public API exposes it as a `glam::Mat4`.
+    pub(crate) transform: Option<[f32; 16]>,
 }
 
 impl WindowSpecification {
@@ -272,6 +277,33 @@ impl WindowSpecification {
     pub fn with_parent_size(mut self, size: Size) -> Self {
         self.parent_size = Some(size);
         self
+    }
+
+    /// **Experimental.** Set the surface transform.
+    ///
+    /// The `transform` is a 4x4 matrix applied to the surface backing the window
+    /// when this specification is applied via
+    /// [`WindowManagerTools::modify_window`](crate::policy::WindowManagerTools::modify_window).
+    ///
+    /// This is a temporary, opt-in capability behind the `experimental` feature.
+    /// It requires `mir-sys` to link against `mirserver`, and the underlying
+    /// `mir::scene::Surface` transform is expected to be removed in a future Mir
+    /// release, at which point this method will disappear too.
+    #[cfg(feature = "experimental")]
+    pub fn with_transform(mut self, transform: glam::Mat4) -> Self {
+        self.transform = Some(transform.to_cols_array());
+        self
+    }
+
+    /// **Experimental.** Get the requested surface transform, if set.
+    ///
+    /// See [`with_transform`](Self::with_transform) for details. Note that this
+    /// reflects the value stored in the specification, not the live transform of
+    /// any surface — miral exposes no getter for that.
+    #[cfg(feature = "experimental")]
+    pub fn transform(&self) -> Option<glam::Mat4> {
+        self.transform
+            .map(|cols| glam::Mat4::from_cols_array(&cols))
     }
 
     /// Get the requested top-left position, if set.
@@ -511,6 +543,11 @@ impl WindowSpecification {
             } else {
                 None
             },
+            transform: if data.has_transform {
+                Some(data.transform)
+            } else {
+                None
+            },
         }
     }
 
@@ -605,6 +642,8 @@ impl WindowSpecification {
             alpha: self.alpha.unwrap_or(0.0),
             has_parent_size: self.parent_size.is_some(),
             parent_size: self.parent_size.unwrap_or_default().into(),
+            has_transform: self.transform.is_some(),
+            transform: self.transform.unwrap_or([0.0; 16]),
         }
     }
 }
@@ -648,4 +687,33 @@ fn decode_input_shape(encoded: &str) -> Vec<Rectangle> {
             }
         })
         .collect()
+}
+
+#[cfg(all(test, feature = "experimental"))]
+mod experimental_tests {
+    use super::*;
+
+    #[test]
+    fn transform_defaults_to_none() {
+        let spec = WindowSpecification::new();
+        assert_eq!(spec.transform(), None);
+        assert!(!spec.to_ffi().has_transform);
+    }
+
+    #[test]
+    fn with_transform_round_trips_through_ffi() {
+        let matrix = glam::Mat4::from_cols_array(&[
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+        ]);
+        let spec = WindowSpecification::new().with_transform(matrix);
+
+        assert_eq!(spec.transform(), Some(matrix));
+
+        let ffi = spec.to_ffi();
+        assert!(ffi.has_transform);
+        assert_eq!(ffi.transform, matrix.to_cols_array());
+
+        let restored = WindowSpecification::from_ffi(&ffi);
+        assert_eq!(restored.transform(), Some(matrix));
+    }
 }
