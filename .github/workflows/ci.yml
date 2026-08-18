@@ -1,8 +1,5 @@
 name: CI
 
-# Build and test mir-rs against the current development Mir published in
-# ppa:mir-team/dev, both on every commit/PR and nightly on a schedule so that
-# upstream Mir regressions are caught early even when nothing here changes.
 on:
   push:
   pull_request:
@@ -18,8 +15,8 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  # MSRV, kept in lockstep with rust-version in the workspace manifest.
-  MSRV: '1.82.0'
+  # Kept in lockstep with rust-version in the workspace manifest (Cargo.toml).
+  RUST_VERSION: '1.85.0'
 
 jobs:
   build-and-test:
@@ -54,14 +51,24 @@ jobs:
         run: |
           pkg-config --modversion miral mircore mircommon || true
 
-      # The fmt/clippy/test/build gates run on stable, matching what a
-      # contributor runs locally. The MSRV is verified separately in the
-      # msrv-check job below so that lint changes in newer clippy releases are
-      # never pinned to the old MSRV toolchain.
-      - name: Install the Rust toolchain (stable)
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
+      - name: Install the Rust toolchain via rustup
+        run: |
+          # ubuntu-latest ships rustup, but not necessarily the version this
+          # workspace declares - install rustup if it is missing, then pin the
+          # toolchain to rust-version from the workspace manifest.
+          if ! command -v rustup >/dev/null 2>&1; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+              | sh -s -- -y --profile minimal --default-toolchain none --no-modify-path
+            echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+            export PATH="$HOME/.cargo/bin:$PATH"
+          fi
+          rustup toolchain install "$RUST_VERSION" \
+            --profile minimal \
+            --component rustfmt \
+            --component clippy
+          rustup default "$RUST_VERSION"
+          rustc --version
+          cargo --version
 
       - name: Cache cargo registry and build output
         uses: actions/cache@v4
@@ -71,9 +78,9 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/git/db
             target
-          key: ${{ runner.os }}-cargo-stable-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ env.RUST_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-stable-
+            ${{ runner.os }}-cargo-${{ env.RUST_VERSION }}-
 
       - name: Check formatting
         run: cargo fmt --all -- --check
@@ -86,48 +93,3 @@ jobs:
 
       - name: Build the tiling example
         run: cargo build -p mir-rs-tiling
-
-  msrv-check:
-    name: Verify the MSRV builds against ppa:mir-team/dev
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out the repository
-        uses: actions/checkout@v4
-
-      - name: Add the mir-team development PPA
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends software-properties-common
-          sudo add-apt-repository -y ppa:mir-team/dev
-          sudo apt-get update
-
-      - name: Install Mir development libraries and build dependencies
-        run: |
-          sudo apt-get install -y --no-install-recommends \
-            libmiral-dev \
-            libmircore-dev \
-            libmircommon-dev \
-            libclang-dev \
-            clang \
-            pkg-config \
-            build-essential
-
-      - name: Install the Rust toolchain (MSRV)
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.MSRV }}
-
-      - name: Cache cargo registry and build output
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-            target
-          key: ${{ runner.os }}-cargo-${{ env.MSRV }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-${{ env.MSRV }}-
-
-      - name: Check that the workspace builds on the MSRV
-        run: cargo check --workspace --all-targets
