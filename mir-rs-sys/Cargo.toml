@@ -22,9 +22,13 @@ crate-type = ["staticlib", "rlib"]
 experimental = []
 
 [dependencies]
-cxx = { version = ">=1.0.167" }
+# Upper-bounded below 1.0.195: from that release cxx declares rust-version 1.85
+# (and cxxbridge-macro moved to edition 2024), which would break the 1.82.0 MSRV.
+cxx = { version = ">=1.0.167, <1.0.195" }
 
 [build-dependencies]
-cxx-build = { version = ">=1.0.167" }
+# Must match the cxx version; capped below 1.0.195 for the same rust-version 1.85
+# / MSRV reason as the cxx dependency above.
+cxx-build = { version = ">=1.0.167, <1.0.195" }
 bindgen = "0.71"
 pkg-config = "0.3"
