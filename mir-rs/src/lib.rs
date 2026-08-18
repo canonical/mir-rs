@@ -40,6 +40,9 @@
 //! ```
 
 #![deny(missing_docs)]
+// The quick-start example above is a whole compositor binary, so it keeps its
+// `fn main` even though rustdoc would wrap the body in one for us.
+#![allow(clippy::needless_doctest_main)]
 
 pub mod application;
 pub mod client;

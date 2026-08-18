@@ -447,7 +447,7 @@ pub mod ffi {
         fn miral_tools_active_application_zone(tools: &MiralTools) -> ZoneSnapshot;
         /// Get the info snapshot for a window by ID.
         fn miral_tools_info_for_window_id(tools: &MiralTools, window_id: u64)
-            -> WindowInfoSnapshot;
+        -> WindowInfoSnapshot;
         /// Swap two windows in the stacking order by their IDs.
         fn miral_tools_swap_tree_order_by_id(
             tools: Pin<&mut MiralTools>,
@@ -1319,8 +1319,8 @@ fn rust_config_callback_multi(callback_id: u32, values: &[String]) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::atomic::{AtomicU32, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicU32, Ordering};
 
     #[test]
     fn boxed_closure_runs_when_invoked() {
