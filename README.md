@@ -12,10 +12,6 @@ This repository is a Cargo workspace containing **two crates** plus a worked exa
 | `mir-rs/`                   | `mir`           | The user-facing, safe, idiomatic Rust API                     |
 | `mir-rs/examples/mir-rs-tiling/` | `mir-rs-tiling` | A working tiling compositor built with `mir` (not published) |
 
-> **Note on naming:** the *directories* are named `mir-rs*` to describe the project, but the
-> *crates* they publish are named `mir` and `mir-sys`. In `Cargo.toml` and in `use` statements
-> you always refer to `mir` and `mir_sys`.
-
 ```
 ┌─────────────────────────────────────────────┐
 │  your compositor  (e.g. mir-rs-tiling)      │
@@ -48,7 +44,7 @@ unsupported version fails at configure time with a clear message rather than
 part-way through the C++ build.
 
 A C++ toolchain is also required (the bridge compiles `mir-rs-sys/src/bridge.cpp`), and the
-Rust toolchain must be at least **1.82.0** (edition 2021).
+Rust toolchain must be at least **1.85.0** (edition 2024).
 
 ### Experimental features
 
