@@ -1,0 +1,85 @@
+name: CI
+
+# Build and test mir-rs against the current development Mir published in
+# ppa:mir-team/dev, both on every commit/PR and nightly on a schedule so that
+# upstream Mir regressions are caught early even when nothing here changes.
+on:
+  push:
+  pull_request:
+  schedule:
+    # 03:17 UTC every day. The dev PPA is a moving target, so this re-pulls it
+    # and rebuilds against whatever Mir is current.
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # MSRV, kept in lockstep with rust-version in the workspace manifest.
+  RUST_TOOLCHAIN: '1.82.0'
+
+jobs:
+  build-and-test:
+    name: Build & test against ppa:mir-team/dev
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Add the mir-team development PPA
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends software-properties-common
+          sudo add-apt-repository -y ppa:mir-team/dev
+          sudo apt-get update
+
+      - name: Install Mir development libraries and build dependencies
+        run: |
+          # Mir libraries come from ppa:mir-team/dev; the rest are the toolchain
+          # the build needs — libclang for bindgen, pkg-config for build.rs's
+          # probes, and a C++ compiler for the cxx bridge.
+          sudo apt-get install -y --no-install-recommends \
+            libmiral-dev \
+            libmircore-dev \
+            libmircommon-dev \
+            libclang-dev \
+            clang \
+            pkg-config \
+            build-essential
+
+      - name: Report the installed Mir versions
+        run: |
+          pkg-config --modversion miral mircore mircommon || true
+
+      - name: Install the Rust toolchain (MSRV)
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry and build output
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: ${{ runner.os }}-cargo-${{ env.RUST_TOOLCHAIN }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ env.RUST_TOOLCHAIN }}-
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Lint with clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Run the test suite
+        run: cargo test --workspace
+
+      - name: Build the tiling example
+        run: cargo build -p mir-rs-tiling
