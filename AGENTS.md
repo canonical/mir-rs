@@ -14,7 +14,9 @@ cargo test --workspace
 cargo build -p mir-rs-tiling
 ```
 
-All four must pass. There is no CI to catch it for you.
+All four must pass locally before you push. CI (`.github/workflows/ci.yml`) runs the same
+gates against `ppa:mir-team/dev` on Ubuntu 26.04, plus a nightly scheduled rebuild against
+whatever Mir is current in that PPA.
 
 ## Linting: clippy must always be clean
 
@@ -56,7 +58,7 @@ All four must pass. There is no CI to catch it for you.
 ## Formatting, MSRV and documentation
 
 - `cargo fmt --all` before committing; `cargo fmt --all -- --check` must be clean.
-- MSRV is **1.82.0**, edition 2021, declared once in the workspace manifest and inherited by
+- MSRV is **1.85.0**, edition 2024, declared once in the workspace manifest and inherited by
   each crate (`version.workspace = true`, etc.). Don't use newer language or std features, and
   don't hard-code the version in a member `Cargo.toml`.
 - The `mir` crate is `#![deny(missing_docs)]` — every public item, including enum variants and
