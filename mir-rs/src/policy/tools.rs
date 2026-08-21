@@ -14,7 +14,7 @@ use crate::workspace::Workspace;
 /// Published once the policy has been constructed and cleared as soon as the
 /// policy is destroyed, so a handle that outlives the server panics on use rather
 /// than dereferencing a destroyed C++ object.
-static TOOLS_PTR: AtomicPtr<mir_sys::ffi::MiralTools> = AtomicPtr::new(ptr::null_mut());
+static TOOLS_PTR: AtomicPtr<crate::sys::ffi::MiralTools> = AtomicPtr::new(ptr::null_mut());
 
 /// The handle returned by [`WindowManagerTools::global_ref`].
 static TOOLS: WindowManagerTools = WindowManagerTools { _private: () };
@@ -80,7 +80,7 @@ impl WindowManagerTools {
     ///
     /// `ptr` must point at a live `MiralTools` object that stays valid until
     /// [`uninstall`](Self::uninstall) is called.
-    pub(crate) unsafe fn install(ptr: *mut mir_sys::ffi::MiralTools) {
+    pub(crate) unsafe fn install(ptr: *mut crate::sys::ffi::MiralTools) {
         TOOLS_PTR.store(ptr, Ordering::Release);
     }
 
@@ -108,14 +108,14 @@ impl WindowManagerTools {
     /// two `&mut` borrows are live at once. The assertion catches use outside that
     /// window.
     #[allow(clippy::mut_from_ref)]
-    fn pin_mut(&self) -> Pin<&mut mir_sys::ffi::MiralTools> {
+    fn pin_mut(&self) -> Pin<&mut crate::sys::ffi::MiralTools> {
         let raw = TOOLS_PTR.load(Ordering::Acquire);
         assert!(!raw.is_null(), "WindowManagerTools not available");
         unsafe { Pin::new_unchecked(&mut *raw) }
     }
 
     /// Get an immutable reference to the underlying tools.
-    fn as_ref(&self) -> &mir_sys::ffi::MiralTools {
+    fn as_ref(&self) -> &crate::sys::ffi::MiralTools {
         let raw = TOOLS_PTR.load(Ordering::Acquire);
         assert!(!raw.is_null(), "WindowManagerTools not available");
         unsafe { &*raw }
@@ -126,14 +126,14 @@ impl WindowManagerTools {
     /// This brings the window and all of its child/satellite windows to
     /// the top of the z-order.
     pub fn raise_tree(&self, window: &Window) {
-        mir_sys::ffi::miral_tools_raise_tree_by_id(self.pin_mut(), window.id());
+        crate::sys::ffi::miral_tools_raise_tree_by_id(self.pin_mut(), window.id());
     }
 
     /// Set the input focus to the given window.
     ///
     /// The window will receive keyboard events after this call.
     pub fn select_active_window(&self, window: &Window) {
-        mir_sys::ffi::miral_tools_select_active_window_by_id(self.pin_mut(), window.id());
+        crate::sys::ffi::miral_tools_select_active_window_by_id(self.pin_mut(), window.id());
     }
 
     /// Modify a window's properties according to the given specification.
@@ -141,27 +141,27 @@ impl WindowManagerTools {
     /// Only fields that are set in the specification will be changed.
     pub fn modify_window(&self, window: &Window, spec: &WindowSpecification) {
         let ffi_spec = spec.to_ffi();
-        mir_sys::ffi::miral_tools_modify_window_by_id(self.pin_mut(), window.id(), &ffi_spec);
+        crate::sys::ffi::miral_tools_modify_window_by_id(self.pin_mut(), window.id(), &ffi_spec);
     }
 
     /// Focus the next application's window.
     pub fn focus_next_application(&self) {
-        mir_sys::ffi::miral_tools_focus_next_application(self.pin_mut());
+        crate::sys::ffi::miral_tools_focus_next_application(self.pin_mut());
     }
 
     /// Focus the previous application's window.
     pub fn focus_prev_application(&self) {
-        mir_sys::ffi::miral_tools_focus_prev_application(self.pin_mut());
+        crate::sys::ffi::miral_tools_focus_prev_application(self.pin_mut());
     }
 
     /// Focus the next window within the active application.
     pub fn focus_next_within_application(&self) {
-        mir_sys::ffi::miral_tools_focus_next_within_application(self.pin_mut());
+        crate::sys::ffi::miral_tools_focus_next_within_application(self.pin_mut());
     }
 
     /// Focus the previous window within the active application.
     pub fn focus_prev_within_application(&self) {
-        mir_sys::ffi::miral_tools_focus_prev_within_application(self.pin_mut());
+        crate::sys::ffi::miral_tools_focus_prev_within_application(self.pin_mut());
     }
 
     /// Ask a client to close its window gracefully.
@@ -169,22 +169,26 @@ impl WindowManagerTools {
     /// This sends a close request to the client (equivalent to clicking
     /// the window's close button). The client may choose to ignore it.
     pub fn ask_client_to_close(&self, window: &Window) {
-        mir_sys::ffi::miral_tools_ask_client_to_close_by_id(self.pin_mut(), window.id());
+        crate::sys::ffi::miral_tools_ask_client_to_close_by_id(self.pin_mut(), window.id());
     }
 
     /// Drag a window by the given displacement.
     pub fn drag_window(&self, window: &Window, movement: Displacement) {
-        mir_sys::ffi::miral_tools_drag_window_by_id(self.pin_mut(), window.id(), movement.into());
+        crate::sys::ffi::miral_tools_drag_window_by_id(
+            self.pin_mut(),
+            window.id(),
+            movement.into(),
+        );
     }
 
     /// Drag the currently active window by the given displacement.
     pub fn drag_active_window(&self, movement: Displacement) {
-        mir_sys::ffi::miral_tools_drag_active_window(self.pin_mut(), movement.into());
+        crate::sys::ffi::miral_tools_drag_active_window(self.pin_mut(), movement.into());
     }
 
     /// Get the active (focused) window, if any.
     pub fn active_window(&self) -> Option<Window> {
-        let id = mir_sys::ffi::miral_tools_active_window_id(self.as_ref());
+        let id = crate::sys::ffi::miral_tools_active_window_id(self.as_ref());
         if id == 0 {
             None
         } else {
@@ -196,7 +200,7 @@ impl WindowManagerTools {
     ///
     /// Returns a snapshot of the window's current properties.
     pub fn info_for(&self, window: &Window) -> WindowInfo {
-        let snapshot = mir_sys::ffi::miral_tools_info_for_window_id(self.as_ref(), window.id());
+        let snapshot = crate::sys::ffi::miral_tools_info_for_window_id(self.as_ref(), window.id());
         WindowInfo::from_ffi(&snapshot, window.id())
     }
 
@@ -205,18 +209,18 @@ impl WindowManagerTools {
     /// The application zone is the output area minus any reserved space
     /// (e.g., panels, docks).
     pub fn active_application_zone(&self) -> Zone {
-        let snapshot = mir_sys::ffi::miral_tools_active_application_zone(self.as_ref());
+        let snapshot = crate::sys::ffi::miral_tools_active_application_zone(self.as_ref());
         Zone::from_ffi(&snapshot)
     }
 
     /// Get the rectangle of the active output.
     pub fn active_output(&self) -> Rectangle {
-        mir_sys::ffi::miral_tools_active_output(self.as_ref()).into()
+        crate::sys::ffi::miral_tools_active_output(self.as_ref()).into()
     }
 
     /// Get the number of connected applications.
     pub fn count_applications(&self) -> u32 {
-        mir_sys::ffi::miral_tools_count_applications(self.as_ref())
+        crate::sys::ffi::miral_tools_count_applications(self.as_ref())
     }
 
     /// Swap two windows in the stacking order.
@@ -224,7 +228,7 @@ impl WindowManagerTools {
     /// After this call, `window_a` will be at `window_b`'s old stacking position
     /// and vice versa.
     pub fn swap_tree_order(&self, window_a: &Window, window_b: &Window) {
-        mir_sys::ffi::miral_tools_swap_tree_order_by_id(
+        crate::sys::ffi::miral_tools_swap_tree_order_by_id(
             self.pin_mut(),
             window_a.id(),
             window_b.id(),
@@ -233,19 +237,19 @@ impl WindowManagerTools {
 
     /// Send a window tree to the back of the stacking order.
     pub fn send_tree_to_back(&self, window: &Window) {
-        mir_sys::ffi::miral_tools_send_tree_to_back_by_id(self.pin_mut(), window.id());
+        crate::sys::ffi::miral_tools_send_tree_to_back_by_id(self.pin_mut(), window.id());
     }
 
     /// Move the cursor to a specific point.
     pub fn move_cursor_to(&self, point: Point) {
-        mir_sys::ffi::miral_tools_move_cursor_to(self.pin_mut(), point.into());
+        crate::sys::ffi::miral_tools_move_cursor_to(self.pin_mut(), point.into());
     }
 
     /// Find the window at a given point.
     ///
     /// Returns the topmost window under the point, or `None` if no window is there.
     pub fn window_at(&self, point: Point) -> Option<Window> {
-        let id = mir_sys::ffi::miral_tools_window_id_at(self.as_ref(), point.into());
+        let id = crate::sys::ffi::miral_tools_window_id_at(self.as_ref(), point.into());
         if id == 0 {
             None
         } else {
@@ -257,7 +261,7 @@ impl WindowManagerTools {
     ///
     /// Returns a list of all windows, which can be used for iteration.
     pub fn all_windows(&self) -> Vec<Window> {
-        let ids = mir_sys::ffi::miral_tools_all_window_ids(self.as_ref());
+        let ids = crate::sys::ffi::miral_tools_all_window_ids(self.as_ref());
         ids.into_iter()
             .map(|id| Window::from_ffi(id, Point::default(), Size::default()))
             .collect()
@@ -272,8 +276,8 @@ impl WindowManagerTools {
         new_state: WindowState,
         current_rect: Rectangle,
     ) -> Rectangle {
-        let ffi_rect: mir_sys::ffi::Rectangle = current_rect.into();
-        mir_sys::ffi::miral_tools_place_and_size_for_state(
+        let ffi_rect: crate::sys::ffi::Rectangle = current_rect.into();
+        crate::sys::ffi::miral_tools_place_and_size_for_state(
             self.as_ref(),
             window.id(),
             new_state.to_raw(),
@@ -293,7 +297,7 @@ impl WindowManagerTools {
     ///
     /// Panics if the tools are not available (see [`is_available`](Self::is_available)).
     pub fn create_workspace(&self) -> Workspace {
-        let id = mir_sys::ffi::miral_tools_create_workspace(self.pin_mut());
+        let id = crate::sys::ffi::miral_tools_create_workspace(self.pin_mut());
         Workspace::from_ffi(id)
     }
 
@@ -305,7 +309,7 @@ impl WindowManagerTools {
     ///
     /// Panics if the tools are not available (see [`is_available`](Self::is_available)).
     pub fn add_tree_to_workspace(&self, window: &Window, workspace: &Workspace) {
-        mir_sys::ffi::miral_tools_add_tree_to_workspace(
+        crate::sys::ffi::miral_tools_add_tree_to_workspace(
             self.pin_mut(),
             window.id(),
             workspace.id(),
@@ -318,7 +322,7 @@ impl WindowManagerTools {
     ///
     /// Panics if the tools are not available (see [`is_available`](Self::is_available)).
     pub fn remove_tree_from_workspace(&self, window: &Window, workspace: &Workspace) {
-        mir_sys::ffi::miral_tools_remove_tree_from_workspace(
+        crate::sys::ffi::miral_tools_remove_tree_from_workspace(
             self.pin_mut(),
             window.id(),
             workspace.id(),
@@ -331,7 +335,7 @@ impl WindowManagerTools {
     ///
     /// Panics if the tools are not available (see [`is_available`](Self::is_available)).
     pub fn move_workspace_content_to_workspace(&self, to: &Workspace, from: &Workspace) {
-        mir_sys::ffi::miral_tools_move_workspace_content_to_workspace(
+        crate::sys::ffi::miral_tools_move_workspace_content_to_workspace(
             self.pin_mut(),
             to.id(),
             from.id(),
@@ -348,7 +352,7 @@ impl WindowManagerTools {
     /// Panics if the tools are not available (see [`is_available`](Self::is_available)).
     pub fn workspaces_containing(&self, window: &Window) -> Vec<Workspace> {
         let ids =
-            mir_sys::ffi::miral_tools_workspaces_containing_window(self.pin_mut(), window.id());
+            crate::sys::ffi::miral_tools_workspaces_containing_window(self.pin_mut(), window.id());
         ids.into_iter().map(Workspace::from_ffi).collect()
     }
 
@@ -361,7 +365,7 @@ impl WindowManagerTools {
     ///
     /// Panics if the tools are not available (see [`is_available`](Self::is_available)).
     pub fn windows_in_workspace(&self, workspace: &Workspace) -> Vec<Window> {
-        let ids = mir_sys::ffi::miral_tools_windows_in_workspace(self.pin_mut(), workspace.id());
+        let ids = crate::sys::ffi::miral_tools_windows_in_workspace(self.pin_mut(), workspace.id());
         ids.into_iter()
             .map(|id| Window::from_ffi(id, Point::default(), Size::default()))
             .collect()
@@ -415,9 +419,9 @@ impl WindowManagerTools {
     where
         F: FnOnce() + Send + 'static,
     {
-        mir_sys::ffi::miral_tools_invoke_under_lock(
+        crate::sys::ffi::miral_tools_invoke_under_lock(
             self.pin_mut(),
-            mir_sys::rust_closure_new(callback),
+            crate::sys::rust_closure_new(callback),
         );
     }
 }
@@ -437,8 +441,8 @@ pub(crate) mod test_support {
 
     /// A non-null address that is never dereferenced — the tests only exercise
     /// the availability bookkeeping, never an FFI call.
-    pub(crate) fn dummy_ptr() -> *mut mir_sys::ffi::MiralTools {
-        std::ptr::NonNull::<mir_sys::ffi::MiralTools>::dangling().as_ptr()
+    pub(crate) fn dummy_ptr() -> *mut crate::sys::ffi::MiralTools {
+        std::ptr::NonNull::<crate::sys::ffi::MiralTools>::dangling().as_ptr()
     }
 }
 

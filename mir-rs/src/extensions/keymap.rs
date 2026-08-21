@@ -59,12 +59,12 @@ impl ServerExtension for Keymap {
         "Keymap"
     }
 
-    fn apply(self: Box<Self>, runner: Pin<&mut mir_sys::ffi::MiralRunner>) {
+    fn apply(self: Box<Self>, runner: Pin<&mut crate::sys::ffi::MiralRunner>) {
         let layout = if let Some(variant) = &self.variant {
             format!("{}({})", self.layout, variant)
         } else {
             self.layout.clone()
         };
-        mir_sys::ffi::miral_runner_add_keymap(runner, &layout);
+        crate::sys::ffi::miral_runner_add_keymap(runner, &layout);
     }
 }

@@ -25,9 +25,9 @@ impl ServerExtension for SessionLockListener {
         "SessionLockListener"
     }
 
-    fn apply(self: Box<Self>, runner: Pin<&mut mir_sys::ffi::MiralRunner>) {
-        mir_sys::set_on_session_lock_callback(self.on_lock);
-        mir_sys::set_on_session_unlock_callback(self.on_unlock);
-        mir_sys::ffi::miral_runner_add_session_lock_listener(runner);
+    fn apply(self: Box<Self>, runner: Pin<&mut crate::sys::ffi::MiralRunner>) {
+        crate::sys::set_on_session_lock_callback(self.on_lock);
+        crate::sys::set_on_session_unlock_callback(self.on_unlock);
+        crate::sys::ffi::miral_runner_add_session_lock_listener(runner);
     }
 }

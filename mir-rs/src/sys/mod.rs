@@ -16,11 +16,11 @@
 
 //! Low-level FFI bindings to the miral C++ library.
 //!
-//! This crate provides:
+//! The `mir` crate's internal FFI layer provides:
 //! - **bindgen-generated** Rust equivalents of C-linkage Mir enums
 //! - **cxx.rs bridge** for C++ class interactions (MirRunner, WindowManagerTools, etc.)
 //!
-//! Compositor authors should use the `mir` crate instead of this one directly.
+//! Compositor authors should use the safe `mir` API instead of this module directly.
 
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]

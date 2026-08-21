@@ -15,7 +15,7 @@
  */
 
 #include "bridge.h"
-#include "mir-sys/src/lib.rs.h"
+#include "mir/src/sys/mod.rs.h"
 
 #include <miral/add_init_callback.h>
 #include <miral/bounce_keys.h>

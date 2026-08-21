@@ -4,8 +4,8 @@ Idiomatic Rust API for building Wayland compositors with the [Mir](https://githu
 
 This crate lives in the `mir-rs/` directory of the
 [mir-rs](https://github.com/canonical/mir-rs) workspace; see the
-[workspace README](../README.md) for an overview of how it fits together with the
-[`mir-sys`](../mir-rs-sys/README.md) bridge.
+[workspace README](../README.md) for an overview. Its low-level FFI bridge is kept
+internally under `src/sys/`.
 
 ## System Requirements
 
@@ -85,7 +85,7 @@ This crate provides a safe, idiomatic Rust layer on top of the battle-tested mir
 ┌─────────────────────────────────────────────┐
 │  mir  (this crate - idiomatic Rust API)     │
 ├─────────────────────────────────────────────┤
-│  mir-sys  (cxx.rs FFI + bindgen)            │
+│  sys  (cxx.rs FFI + bindgen, internal)      │
 ├─────────────────────────────────────────────┤
 │  libmiral  (C++ library, system-installed)  │
 └─────────────────────────────────────────────┘

@@ -42,21 +42,21 @@ impl ServerExtension for IdleListener {
         "IdleListener"
     }
 
-    fn apply(self: Box<Self>, runner: Pin<&mut mir_sys::ffi::MiralRunner>) {
+    fn apply(self: Box<Self>, runner: Pin<&mut crate::sys::ffi::MiralRunner>) {
         let has_callbacks =
             self.on_dim.is_some() || self.on_off.is_some() || self.on_wake.is_some();
 
         if let Some(callback) = self.on_dim {
-            mir_sys::set_on_idle_dim_callback(callback);
+            crate::sys::set_on_idle_dim_callback(callback);
         }
         if let Some(callback) = self.on_off {
-            mir_sys::set_on_idle_off_callback(callback);
+            crate::sys::set_on_idle_off_callback(callback);
         }
         if let Some(callback) = self.on_wake {
-            mir_sys::set_on_idle_wake_callback(callback);
+            crate::sys::set_on_idle_wake_callback(callback);
         }
         if has_callbacks {
-            mir_sys::ffi::miral_runner_add_idle_listener(runner);
+            crate::sys::ffi::miral_runner_add_idle_listener(runner);
         }
     }
 }

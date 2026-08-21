@@ -43,7 +43,7 @@ fn probe(name: &str, min_version: &str, hint: &str) -> pkg_config::Library {
         .unwrap_or_else(|e| {
             panic!(
                 "\n\n\
-                ERROR: mir-sys requires the {name} C++ library, version {min_version} or newer.\n\
+                ERROR: mir requires the {name} C++ library, version {min_version} or newer.\n\
                 \n\
                 pkg-config reported:\n\
                 {e}\n\
@@ -112,14 +112,14 @@ fn main() {
         .expect("Failed to write bindgen output");
 
     // --- cxx-build: Build the C++ bridge ---
-    let mut cxx_build = cxx_build::bridge("src/lib.rs");
+    let mut cxx_build = cxx_build::bridge("src/sys/mod.rs");
 
     for path in &include_paths {
         cxx_build.include(path);
     }
 
     // Add the src directory so generated CXX code can find bridge.h
-    cxx_build.include("src");
+    cxx_build.include("src/sys");
 
     // Experimental: the surface transform is applied by calling
     // `mir::scene::Surface::set_transformation`, which is only declared in the
@@ -144,9 +144,9 @@ fn main() {
     }
 
     cxx_build
-        .file("src/bridge.cpp")
+        .file("src/sys/bridge.cpp")
         .std("c++23")
-        .compile("mir_sys_bridge");
+        .compile("mir_bridge");
 
     // Link against miral and its dependencies
     for lib in &miral.libs {
@@ -165,9 +165,9 @@ fn main() {
     }
 
     println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rerun-if-changed=src/lib.rs");
-    println!("cargo:rerun-if-changed=src/bridge.cpp");
-    println!("cargo:rerun-if-changed=src/bridge.h");
+    println!("cargo:rerun-if-changed=src/sys/mod.rs");
+    println!("cargo:rerun-if-changed=src/sys/bridge.cpp");
+    println!("cargo:rerun-if-changed=src/sys/bridge.h");
     println!("cargo:rerun-if-env-changed=CARGO_FEATURE_EXPERIMENTAL");
     println!("cargo:rerun-if-env-changed=PKG_CONFIG_PATH");
     println!("cargo:rerun-if-env-changed=PKG_CONFIG_SYSROOT_DIR");

@@ -12,16 +12,16 @@ static WAYLAND_EXTENSIONS_APPLY_CALL: Mutex<Option<(Vec<String>, Vec<String>)>> 
 
 #[cfg(not(test))]
 fn apply_wayland_extensions(
-    runner: Pin<&mut mir_sys::ffi::MiralRunner>,
+    runner: Pin<&mut crate::sys::ffi::MiralRunner>,
     enabled: &[String],
     disabled: &[String],
 ) {
-    mir_sys::ffi::miral_runner_add_wayland_extensions(runner, enabled, disabled);
+    crate::sys::ffi::miral_runner_add_wayland_extensions(runner, enabled, disabled);
 }
 
 #[cfg(test)]
 fn apply_wayland_extensions(
-    _runner: Pin<&mut mir_sys::ffi::MiralRunner>,
+    _runner: Pin<&mut crate::sys::ffi::MiralRunner>,
     enabled: &[String],
     disabled: &[String],
 ) {
@@ -111,7 +111,7 @@ impl ServerExtension for WaylandExtensions {
         "WaylandExtensions"
     }
 
-    fn apply(self: Box<Self>, runner: Pin<&mut mir_sys::ffi::MiralRunner>) {
+    fn apply(self: Box<Self>, runner: Pin<&mut crate::sys::ffi::MiralRunner>) {
         apply_wayland_extensions(runner, &self.enabled, &self.disabled);
     }
 }
@@ -124,7 +124,7 @@ mod tests {
     fn apply_forwards_enabled_and_disabled_extensions() {
         *WAYLAND_EXTENSIONS_APPLY_CALL.lock().unwrap() = None;
 
-        let mut runner = mir_sys::ffi::miral_runner_new(&["mir-test".to_string()]);
+        let mut runner = crate::sys::ffi::miral_runner_new(&["mir-test".to_string()]);
         Box::new(
             WaylandExtensions::default()
                 .enable(WaylandExtensions::LAYER_SHELL)
