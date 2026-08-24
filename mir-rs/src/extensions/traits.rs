@@ -17,5 +17,5 @@ pub trait ServerExtension: Send + 'static {
     /// Called during [`MirRunner::run()`](crate::runner::MirRunner::run) before
     /// the server starts. Each extension should call the appropriate
     /// `crate::sys::ffi::miral_runner_add_*` function to register itself.
-    fn apply(self: Box<Self>, runner: Pin<&mut crate::runner::MirRunner>);
+    fn apply(self: Box<Self>, runner: Pin<&mut crate::sys::ffi::MiralRunner>);
 }
