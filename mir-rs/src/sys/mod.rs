@@ -303,10 +303,6 @@ pub mod ffi {
 
         /// Create a new MirRunner from command-line arguments.
         fn miral_runner_new(args: &[String]) -> UniquePtr<MiralRunner>;
-        /// Run the server with no policy. Blocks until exit.
-        fn miral_runner_run(runner: Pin<&mut MiralRunner>) -> i32;
-        /// Run the server with a Rust policy. Blocks until exit.
-        fn miral_runner_run_with_rust_policy(runner: Pin<&mut MiralRunner>) -> i32;
         /// Run the server with a Rust policy and extensions configured.
         ///
         /// Extensions should be added via `miral_runner_add_*` before calling this.
@@ -393,8 +389,6 @@ pub mod ffi {
 
         /// Get a snapshot of window information.
         fn miral_window_info_snapshot(info: &MiralWindowInfo) -> WindowInfoSnapshot;
-        /// Get the window handle from a WindowInfo.
-        fn miral_window_info_window(info: &MiralWindowInfo) -> UniquePtr<MiralWindow>;
         /// Get the unique ID for the window in a WindowInfo.
         fn miral_window_info_id(info: &MiralWindowInfo) -> u64;
         /// Get the unique ID for an application.
@@ -409,8 +403,6 @@ pub mod ffi {
 
         /// Get the number of connected applications.
         fn miral_tools_count_applications(tools: &MiralTools) -> u32;
-        /// Get the active window info snapshot.
-        fn miral_tools_active_window(tools: &MiralTools) -> WindowInfoSnapshot;
         /// Get the active window ID (0 if none).
         fn miral_tools_active_window_id(tools: &MiralTools) -> u64;
         /// Focus the next application.
@@ -832,7 +824,7 @@ thread_local! {
 }
 
 /// Set the policy factory that will be called when C++ creates the policy.
-/// Must be called before `miral_runner_run_with_rust_policy`.
+/// Must be called before `miral_runner_run_with_config`.
 pub fn set_policy_factory(factory: PolicyFactoryFn) {
     POLICY_FACTORY.with(|f| {
         *f.borrow_mut() = Some(factory);

@@ -777,16 +777,6 @@ miral_runner_new(rust::Slice<const rust::String> args) {
   return std::make_unique<MiralRunner>(std::move(arg_strings));
 }
 
-int32_t miral_runner_run(MiralRunner &runner) {
-  return runner.inner->run_with({});
-}
-
-int32_t miral_runner_run_with_rust_policy(MiralRunner &runner) {
-  auto policy_builder = miral::SetWindowManagementPolicy(&make_rust_policy);
-
-  return runner.inner->run_with({policy_builder});
-}
-
 int32_t miral_runner_run_with_config(
     MiralRunner &runner, rust::Slice<const ConfigOptionDesc> config_options) {
   // Policy (always added)
@@ -1144,11 +1134,6 @@ WindowInfoSnapshot miral_window_info_snapshot(MiralWindowInfo const &info) {
   };
 }
 
-std::unique_ptr<MiralWindow>
-miral_window_info_window(MiralWindowInfo const &info) {
-  return std::make_unique<MiralWindow>(info.inner.window());
-}
-
 uint64_t miral_window_info_id(MiralWindowInfo const &info) {
   return window_to_id(info.inner.window());
 }
@@ -1172,56 +1157,6 @@ miral_app_info_snapshot(MiralApplicationInfo const &info) {
 
 uint32_t miral_tools_count_applications(MiralTools const &tools) {
   return tools.inner.count_applications();
-}
-
-WindowInfoSnapshot miral_tools_active_window(MiralTools const &tools) {
-  auto window = tools.inner.active_window();
-  if (!window) {
-    return WindowInfoSnapshot{
-        rust::String(""),
-        0,
-        0,
-        Point{0, 0},
-        Size{0, 0},
-        0,
-        0,
-        0,
-        0,
-        0,
-        false,
-        false,
-        false,
-        0,
-        Rectangle{Point{0, 0}, Size{0, 0}},
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        false,
-        0,
-        0,
-        0,
-        0,
-        0,
-        false,
-        false,
-        Rectangle{Point{0, 0}, Size{0, 0}},
-        false,
-        false,
-        Rectangle{Point{0, 0}, Size{0, 0}},
-        rust::String(""),
-        false,
-        0,
-        0.0f,
-        0,
-        false,
-        false,
-    };
-  }
-  auto &info = tools.inner.info_for(window);
-  return miral_window_info_snapshot(MiralWindowInfo{info});
 }
 
 uint64_t miral_tools_active_window_id(MiralTools const &tools) {
