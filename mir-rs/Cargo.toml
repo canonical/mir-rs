@@ -12,7 +12,7 @@ categories = ["gui", "os"]
 
 [dependencies]
 bitflags = "2"
-cxx = { version = ">=1.0.167" }
+cxx = { version = ">=1.0.167, <1.0.195" }
 glam = { workspace = true, optional = true }
 
 [features]

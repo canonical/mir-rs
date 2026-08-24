@@ -286,7 +286,7 @@ impl WindowSpecification {
     /// [`WindowManagerTools::modify_window`](crate::policy::WindowManagerTools::modify_window).
     ///
     /// This is a temporary, opt-in capability behind the `experimental` feature.
-    /// It requires `mir-sys` to link against `mirserver`, and the underlying
+    /// It requires `mir` to link against `mirserver`, and the underlying
     /// `mir::scene::Surface` transform is expected to be removed in a future Mir
     /// release, at which point this method will disappear too.
     #[cfg(feature = "experimental")]

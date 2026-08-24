@@ -71,7 +71,7 @@ whatever Mir is current in that PPA.
 
 ## Layering
 
-- `mir/src/sys` stays thin and unopinionated: it exposes miral, nothing more. No ergonomics, no
+- `mir-rs/src/sys` stays thin and unopinionated: it exposes miral, nothing more. No ergonomics, no
   policy, no clever Rust types.
 - All safety, ergonomics and idiomatic API design belong in `mir`.
 - **Never leak `crate::sys::ffi` types through `mir`'s public API.** Convert at the boundary
