@@ -156,14 +156,8 @@ fn main() {
         println!("cargo:rustc-link-search=native={}", path.display());
     }
 
-    // Link against mircore and mircommon explicitly; newer Mir packages no
-    // longer list these as transitive dependencies in miral's pkg-config file.
-    for lib in &mir_core.libs {
-        println!("cargo:rustc-link-lib={}", lib);
-    }
-    for path in &mir_core.link_paths {
-        println!("cargo:rustc-link-search=native={}", path.display());
-    }
+    // Link against mircommon explicitly; miral's pkg-config lists mircore as a
+    // Requires but not mircommon, so mircommon must be linked directly.
     for lib in &mir_common.libs {
         println!("cargo:rustc-link-lib={}", lib);
     }
