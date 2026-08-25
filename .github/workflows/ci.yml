@@ -106,7 +106,7 @@ jobs:
     # surfaces on the commit or PR, so filing an issue for those would just be
     # noise. The dev PPA is a moving target, so a nightly break is usually a new
     # Mir landing that we need to react to.
-    if: ${{ failure() && github.event_name == 'schedule' }}
+    if: ${{ always() && github.event_name == 'schedule' && needs.build-and-test.result == 'failure' }}
     runs-on: ubuntu-latest
     permissions:
       issues: write
