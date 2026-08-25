@@ -30,7 +30,7 @@ impl ExternalClientLauncher {
     /// The server must have been started with this launcher registered via `.add()` on
     /// [`MirRunner`](crate::runner::MirRunner).
     pub fn launch(&self, command: &str) -> Result<i32, Box<dyn std::error::Error>> {
-        let pid = mir_sys::ffi::miral_launcher_launch(command);
+        let pid = crate::sys::ffi::miral_launcher_launch(command);
         if pid < 0 {
             Err(format!("ExternalClientLauncher::launch failed (pid={})", pid).into())
         } else {
@@ -44,7 +44,7 @@ impl ServerExtension for ExternalClientLauncher {
         "ExternalClientLauncher"
     }
 
-    fn apply(self: Box<Self>, runner: Pin<&mut mir_sys::ffi::MiralRunner>) {
-        mir_sys::ffi::miral_runner_add_external_launcher(runner);
+    fn apply(self: Box<Self>, runner: Pin<&mut crate::sys::ffi::MiralRunner>) {
+        crate::sys::ffi::miral_runner_add_external_launcher(runner);
     }
 }

@@ -29,9 +29,9 @@ impl ServerExtension for SetTerminator {
         "SetTerminator"
     }
 
-    fn apply(self: Box<Self>, runner: Pin<&mut mir_sys::ffi::MiralRunner>) {
+    fn apply(self: Box<Self>, runner: Pin<&mut crate::sys::ffi::MiralRunner>) {
         let Self { handler } = *self;
-        mir_sys::set_on_terminator_callback(handler);
-        mir_sys::ffi::miral_runner_add_terminator(runner);
+        crate::sys::set_on_terminator_callback(handler);
+        crate::sys::ffi::miral_runner_add_terminator(runner);
     }
 }

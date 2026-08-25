@@ -203,20 +203,20 @@ pub type DisplacementF = Displacement<f32>;
 
 // --- FFI conversions ---
 
-impl From<mir_sys::ffi::Point> for Point<i32> {
-    fn from(p: mir_sys::ffi::Point) -> Self {
+impl From<crate::sys::ffi::Point> for Point<i32> {
+    fn from(p: crate::sys::ffi::Point) -> Self {
         Self { x: p.x, y: p.y }
     }
 }
 
-impl From<Point<i32>> for mir_sys::ffi::Point {
+impl From<Point<i32>> for crate::sys::ffi::Point {
     fn from(p: Point<i32>) -> Self {
         Self { x: p.x, y: p.y }
     }
 }
 
-impl From<mir_sys::ffi::Size> for Size<i32> {
-    fn from(s: mir_sys::ffi::Size) -> Self {
+impl From<crate::sys::ffi::Size> for Size<i32> {
+    fn from(s: crate::sys::ffi::Size) -> Self {
         Self {
             width: s.width,
             height: s.height,
@@ -224,7 +224,7 @@ impl From<mir_sys::ffi::Size> for Size<i32> {
     }
 }
 
-impl From<Size<i32>> for mir_sys::ffi::Size {
+impl From<Size<i32>> for crate::sys::ffi::Size {
     fn from(s: Size<i32>) -> Self {
         Self {
             width: s.width,
@@ -233,8 +233,8 @@ impl From<Size<i32>> for mir_sys::ffi::Size {
     }
 }
 
-impl From<mir_sys::ffi::Rectangle> for Rectangle<i32> {
-    fn from(r: mir_sys::ffi::Rectangle) -> Self {
+impl From<crate::sys::ffi::Rectangle> for Rectangle<i32> {
+    fn from(r: crate::sys::ffi::Rectangle) -> Self {
         Self {
             top_left: r.top_left.into(),
             size: r.size.into(),
@@ -242,7 +242,7 @@ impl From<mir_sys::ffi::Rectangle> for Rectangle<i32> {
     }
 }
 
-impl From<Rectangle<i32>> for mir_sys::ffi::Rectangle {
+impl From<Rectangle<i32>> for crate::sys::ffi::Rectangle {
     fn from(r: Rectangle<i32>) -> Self {
         Self {
             top_left: r.top_left.into(),
@@ -251,13 +251,13 @@ impl From<Rectangle<i32>> for mir_sys::ffi::Rectangle {
     }
 }
 
-impl From<mir_sys::ffi::Displacement> for Displacement<i32> {
-    fn from(d: mir_sys::ffi::Displacement) -> Self {
+impl From<crate::sys::ffi::Displacement> for Displacement<i32> {
+    fn from(d: crate::sys::ffi::Displacement) -> Self {
         Self { dx: d.dx, dy: d.dy }
     }
 }
 
-impl From<Displacement<i32>> for mir_sys::ffi::Displacement {
+impl From<Displacement<i32>> for crate::sys::ffi::Displacement {
     fn from(d: Displacement<i32>) -> Self {
         Self { dx: d.dx, dy: d.dy }
     }
@@ -322,18 +322,21 @@ mod tests {
     #[test]
     fn geometry_types_round_trip_through_ffi() {
         let point = Point::new(3, 4);
-        assert_eq!(Point::from(mir_sys::ffi::Point::from(point)), point);
+        assert_eq!(Point::from(crate::sys::ffi::Point::from(point)), point);
 
         let size = Size::new(800, 600);
-        assert_eq!(Size::from(mir_sys::ffi::Size::from(size)), size);
+        assert_eq!(Size::from(crate::sys::ffi::Size::from(size)), size);
 
         let displacement = Displacement::new(-1, 2);
         assert_eq!(
-            Displacement::from(mir_sys::ffi::Displacement::from(displacement)),
+            Displacement::from(crate::sys::ffi::Displacement::from(displacement)),
             displacement
         );
 
         let rect = Rectangle::new(point, size);
-        assert_eq!(Rectangle::from(mir_sys::ffi::Rectangle::from(rect)), rect);
+        assert_eq!(
+            Rectangle::from(crate::sys::ffi::Rectangle::from(rect)),
+            rect
+        );
     }
 }

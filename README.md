@@ -4,21 +4,21 @@ Rust bindings for [Mir](https://github.com/canonical/mir), Canonical's display s
 toolkit. `mir-rs` lets you write a Wayland compositor in Rust on top of Mir's `miral`
 window-management library.
 
-This repository is a Cargo workspace containing **two crates** plus a worked example.
+This repository is a Cargo workspace containing the **`mir` crate** plus a worked example.
 
-| Directory                   | Crate name      | Role                                                         |
-| --------------------------- | --------------- | ------------------------------------------------------------ |
-| `mir-rs-sys/`               | `mir-sys`       | Low-level FFI bridge between C++ `miral` and Rust             |
-| `mir-rs/`                   | `mir`           | The user-facing, safe, idiomatic Rust API                     |
+| Directory                        | Crate name      | Role                                                         |
+| -------------------------------- | --------------- | ------------------------------------------------------------ |
+| `mir-rs/`                        | `mir`           | Safe API and its internal `src/sys/` FFI bridge              |
 | `mir-rs/examples/mir-rs-tiling/` | `mir-rs-tiling` | A working tiling compositor built with `mir` (not published) |
+
+> **Note on naming:** the *directory* is named `mir-rs` to describe the project, while the
+> user-facing crate is named `mir`.
 
 ```
 ┌─────────────────────────────────────────────┐
 │  your compositor  (e.g. mir-rs-tiling)      │
 ├─────────────────────────────────────────────┤
-│  mir       — idiomatic, safe Rust API       │  mir-rs/
-├─────────────────────────────────────────────┤
-│  mir-sys   — cxx.rs bridge + bindgen enums  │  mir-rs-sys/
+│  mir       — API + internal sys bridge      │  mir-rs/
 ├─────────────────────────────────────────────┤
 │  libmiral  — C++ library, system-installed  │
 └─────────────────────────────────────────────┘
@@ -39,7 +39,7 @@ Mir development libraries:
 sudo apt install libmiral-dev libmircore-dev libmircommon-dev
 ```
 
-These minimums are enforced by `mir-rs-sys/build.rs` via `pkg-config`, so an
+These minimums are enforced by `mir-rs/build.rs` via `pkg-config`, so an
 unsupported version fails at configure time with a clear message rather than
 part-way through the C++ build.
 

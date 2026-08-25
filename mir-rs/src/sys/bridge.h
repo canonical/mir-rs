@@ -128,8 +128,6 @@ public:
 
 // Runner lifecycle
 std::unique_ptr<MiralRunner> miral_runner_new(rust::Slice<const rust::String> args);
-int32_t miral_runner_run(MiralRunner& runner);
-int32_t miral_runner_run_with_rust_policy(MiralRunner& runner);
 int32_t miral_runner_run_with_config(
     MiralRunner& runner,
     rust::Slice<const ConfigOptionDesc> config_options);
@@ -173,7 +171,6 @@ void miral_magnifier_set_capture_size(int32_t width, int32_t height);
 
 // Window info queries
 WindowInfoSnapshot miral_window_info_snapshot(MiralWindowInfo const& info);
-std::unique_ptr<MiralWindow> miral_window_info_window(MiralWindowInfo const& info);
 uint64_t miral_window_info_id(MiralWindowInfo const& info);
 uint64_t miral_app_info_id(MiralApplicationInfo const& info);
 
@@ -182,7 +179,6 @@ ApplicationInfoSnapshot miral_app_info_snapshot(MiralApplicationInfo const& info
 
 // Window manager tools (ID-based for Rust interop)
 uint32_t miral_tools_count_applications(MiralTools const& tools);
-WindowInfoSnapshot miral_tools_active_window(MiralTools const& tools);
 uint64_t miral_tools_active_window_id(MiralTools const& tools);
 void miral_tools_focus_next_application(MiralTools& tools);
 void miral_tools_focus_prev_application(MiralTools& tools);

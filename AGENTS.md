@@ -66,19 +66,19 @@ whatever Mir is current in that PPA.
 - Doc examples that would start a server must be ```` ```rust,no_run ```` (or `ignore` if they
   cannot compile standalone) so `cargo test` doesn't try to run a compositor.
 - Keep the READMEs honest: if you change a public API that appears in `README.md`,
-  `mir-rs/README.md`, `mir-rs-sys/README.md` or the example's README, update it in the same
+  `mir-rs/README.md` or the example's README, update it in the same
   change.
 
 ## Layering
 
-- `mir-sys` stays thin and unopinionated: it exposes miral, nothing more. No ergonomics, no
+- `mir-rs/src/sys` stays thin and unopinionated: it exposes miral, nothing more. No ergonomics, no
   policy, no clever Rust types.
 - All safety, ergonomics and idiomatic API design belong in `mir`.
-- **Never leak `mir_sys::ffi` types through `mir`'s public API.** Convert at the boundary
+- **Never leak `crate::sys::ffi` types through `mir`'s public API.** Convert at the boundary
   (`From`/`Into` impls, `from_raw`/`to_raw`, `from_ffi`) and expose Rust types only.
 - Adding a miral capability usually means touching four places, in this order:
-  1. `mir-rs-sys/src/bridge.h` / `bridge.cpp` — the C++ shim.
-  2. The `#[cxx::bridge]` module in `mir-rs-sys/src/lib.rs` — must mirror the shim exactly.
+  1. `mir-rs/src/sys/bridge.h` / `bridge.cpp` — the C++ shim.
+  2. The `#[cxx::bridge]` module in `mir-rs/src/sys/mod.rs` — must mirror the shim exactly.
   3. The safe wrapper in the appropriate `mir-rs/src/` module.
   4. The `prelude` in `mir-rs/src/lib.rs`, if it is something compositor authors use directly.
 
@@ -96,7 +96,7 @@ whatever Mir is current in that PPA.
 ## Dependencies and build
 
 - Building requires the Mir development libraries: `libmiral-dev`, `libmircore-dev`,
-  `libmircommon-dev` (miral ≥ 6.0, mircore/mircommon ≥ 2.29). `mir-rs-sys/build.rs` enforces
+  `libmircommon-dev` (miral ≥ 6.0, mircore/mircommon ≥ 2.29). `mir-rs/build.rs` enforces
   the minimums via `pkg-config` and fails with an actionable message.
 - Add dependencies sparingly, and pin shared ones in `[workspace.dependencies]` so both crates
   agree. `cxx` and `cxx-build` versions must match.

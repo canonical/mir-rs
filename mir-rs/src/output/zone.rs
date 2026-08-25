@@ -16,7 +16,7 @@ pub struct Zone {
 
 impl Zone {
     /// Create a zone from FFI data.
-    pub(crate) fn from_ffi(snapshot: &mir_sys::ffi::ZoneSnapshot) -> Self {
+    pub(crate) fn from_ffi(snapshot: &crate::sys::ffi::ZoneSnapshot) -> Self {
         Self {
             id: snapshot.id,
             extents: snapshot.extents.into(),

@@ -93,7 +93,7 @@ pub struct ConfigurationOption {
     pub(crate) default_double: f64,
     pub(crate) default_string: String,
     pub(crate) default_bool: bool,
-    pub(crate) callback: mir_sys::ConfigCallback,
+    pub(crate) callback: crate::sys::ConfigCallback,
     pub(crate) pre_init: bool,
 }
 
@@ -125,7 +125,7 @@ impl ConfigDefault for i32 {
             default_double: 0.0,
             default_string: String::new(),
             default_bool: false,
-            callback: mir_sys::ConfigCallback::Int(callback),
+            callback: crate::sys::ConfigCallback::Int(callback),
             pre_init: false,
         }
     }
@@ -146,7 +146,7 @@ impl ConfigDefault for f64 {
             default_double: default,
             default_string: String::new(),
             default_bool: false,
-            callback: mir_sys::ConfigCallback::Double(callback),
+            callback: crate::sys::ConfigCallback::Double(callback),
             pre_init: false,
         }
     }
@@ -167,7 +167,7 @@ impl ConfigDefault for String {
             default_double: 0.0,
             default_string: default,
             default_bool: false,
-            callback: mir_sys::ConfigCallback::Str(callback),
+            callback: crate::sys::ConfigCallback::Str(callback),
             pre_init: false,
         }
     }
@@ -188,7 +188,7 @@ impl ConfigDefault for bool {
             default_double: 0.0,
             default_string: String::new(),
             default_bool: default,
-            callback: mir_sys::ConfigCallback::Bool(callback),
+            callback: crate::sys::ConfigCallback::Bool(callback),
             pre_init: false,
         }
     }
@@ -220,7 +220,7 @@ impl ConfigOptional for i32 {
             default_double: 0.0,
             default_string: String::new(),
             default_bool: false,
-            callback: mir_sys::ConfigCallback::OptionalInt(callback),
+            callback: crate::sys::ConfigCallback::OptionalInt(callback),
             pre_init: false,
         }
     }
@@ -240,7 +240,7 @@ impl ConfigOptional for String {
             default_double: 0.0,
             default_string: String::new(),
             default_bool: false,
-            callback: mir_sys::ConfigCallback::OptionalStr(callback),
+            callback: crate::sys::ConfigCallback::OptionalStr(callback),
             pre_init: false,
         }
     }
@@ -260,7 +260,7 @@ impl ConfigOptional for bool {
             default_double: 0.0,
             default_string: String::new(),
             default_bool: false,
-            callback: mir_sys::ConfigCallback::OptionalBool(callback),
+            callback: crate::sys::ConfigCallback::OptionalBool(callback),
             pre_init: false,
         }
     }
@@ -334,7 +334,7 @@ impl ConfigurationOption {
             default_double: 0.0,
             default_string: String::new(),
             default_bool: false,
-            callback: mir_sys::ConfigCallback::Flag(Box::new(callback)),
+            callback: crate::sys::ConfigCallback::Flag(Box::new(callback)),
             pre_init: false,
         }
     }
@@ -367,7 +367,7 @@ impl ConfigurationOption {
             default_double: 0.0,
             default_string: String::new(),
             default_bool: false,
-            callback: mir_sys::ConfigCallback::Multi(Box::new(move |values: Vec<String>| {
+            callback: crate::sys::ConfigCallback::Multi(Box::new(move |values: Vec<String>| {
                 callback(&values);
             })),
             pre_init: false,

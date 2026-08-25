@@ -1,6 +1,5 @@
 [workspace]
 members = [
-  "mir-rs-sys",
   "mir-rs",
   "mir-rs/examples/mir-rs-tiling",
 ]

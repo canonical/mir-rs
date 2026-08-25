@@ -23,9 +23,9 @@ impl ServerExtension for AddInitCallback {
         "AddInitCallback"
     }
 
-    fn apply(self: Box<Self>, runner: Pin<&mut mir_sys::ffi::MiralRunner>) {
+    fn apply(self: Box<Self>, runner: Pin<&mut crate::sys::ffi::MiralRunner>) {
         let Self { callback } = *self;
-        mir_sys::set_on_init_callback(callback);
-        mir_sys::ffi::miral_runner_add_init_callback(runner);
+        crate::sys::set_on_init_callback(callback);
+        crate::sys::ffi::miral_runner_add_init_callback(runner);
     }
 }

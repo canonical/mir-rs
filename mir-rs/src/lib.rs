@@ -53,8 +53,16 @@ pub mod input;
 pub mod output;
 pub mod policy;
 pub mod runner;
+mod sys;
 pub mod window;
 pub mod workspace;
+
+/// Context passed to [`extensions::ServerExtension`] implementations.
+///
+/// The underlying FFI module remains private; this opaque re-export makes the
+/// context nameable by downstream extension implementations.
+#[doc(hidden)]
+pub use sys::ffi::MiralRunner as ExtensionContext;
 
 /// Convenience re-exports for the most commonly used types.
 ///

@@ -26,7 +26,7 @@ pub struct Output {
 
 impl Output {
     /// Create an output from an FFI snapshot.
-    pub(crate) fn from_ffi(snapshot: &mir_sys::ffi::OutputSnapshot) -> Self {
+    pub(crate) fn from_ffi(snapshot: &crate::sys::ffi::OutputSnapshot) -> Self {
         Self {
             id: snapshot.id,
             name: snapshot.name.clone(),

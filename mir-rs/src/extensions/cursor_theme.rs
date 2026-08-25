@@ -29,7 +29,7 @@ impl ServerExtension for CursorTheme {
         "CursorTheme"
     }
 
-    fn apply(self: Box<Self>, runner: Pin<&mut mir_sys::ffi::MiralRunner>) {
-        mir_sys::ffi::miral_runner_add_cursor_theme(runner, &self.theme);
+    fn apply(self: Box<Self>, runner: Pin<&mut crate::sys::ffi::MiralRunner>) {
+        crate::sys::ffi::miral_runner_add_cursor_theme(runner, &self.theme);
     }
 }
