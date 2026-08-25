@@ -159,7 +159,5 @@ jobs:
             gh issue create \
               --title "Nightly build against ppa:mir-team/dev failed (${today})" \
               --body "${body}" \
-              --label nightly-failure \
-              --assignee mattkae \
-              --assignee saviq-work
+              --label nightly-failure
           fi
