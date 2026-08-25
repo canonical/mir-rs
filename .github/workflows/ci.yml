@@ -98,3 +98,68 @@ jobs:
 
       - name: Build the tiling example
         run: cargo build -p mir-rs-tiling
+
+  report-nightly-failure:
+    name: Open a ticket when the nightly build breaks
+    needs: [build-and-test]
+    # Only the scheduled (nightly) run files tickets. A push/PR failure already
+    # surfaces on the commit or PR, so filing an issue for those would just be
+    # noise. The dev PPA is a moving target, so a nightly break is usually a new
+    # Mir landing that we need to react to.
+    if: ${{ failure() && github.event_name == 'schedule' }}
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update the nightly-failure issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          # Make sure the label exists before we filter on it. Ignore the error
+          # if it is already there so the step is self-sufficient.
+          gh label create nightly-failure \
+            --color b60205 \
+            --description "Scheduled build against ppa:mir-team/dev failed" \
+            2>/dev/null || true
+
+          today="$(date -u +%Y-%m-%d)"
+          body="$(cat <<EOF
+          The nightly build against \`ppa:mir-team/dev\` failed on ${today}.
+
+          Failed run: ${RUN_URL}
+
+          The dev PPA is a moving target, so this is most likely a new Mir
+          release that the bridge needs to catch up with. Check the build logs
+          for the first failing step.
+
+          _Opened automatically by the CI \`report-nightly-failure\` job._
+          EOF
+          )"
+
+          # Deduplicate: the cron runs daily, so a persistent breakage would
+          # otherwise open a fresh issue every night. If one is already open,
+          # just add a comment linking the latest failed run.
+          existing="$(gh issue list \
+            --label nightly-failure \
+            --state open \
+            --limit 1 \
+            --json number \
+            --jq '.[0].number // empty')"
+
+          if [ -n "${existing}" ]; then
+            echo "Reusing open nightly-failure issue #${existing}."
+            gh issue comment "${existing}" \
+              --body "Nightly build failed again on ${today}: ${RUN_URL}"
+          else
+            echo "No open nightly-failure issue; opening a new one."
+            gh issue create \
+              --title "Nightly build against ppa:mir-team/dev failed (${today})" \
+              --body "${body}" \
+              --label nightly-failure \
+              --assignee mattkae \
+              --assignee saviq-work
+          fi
