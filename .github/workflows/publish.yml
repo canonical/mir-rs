@@ -59,29 +59,7 @@ jobs:
 
           release_tag="${release_tags[0]}"
           tag_version="${release_tag#v}"
-          crate_version="$(
-            python3 - <<'PY'
-import pathlib
-import sys
-import tomllib
-
-workspace = tomllib.loads(pathlib.Path("Cargo.toml").read_text())
-crate = tomllib.loads(pathlib.Path("mir-rs/Cargo.toml").read_text())
-package = crate.get("package", {})
-version = package.get("version")
-
-if isinstance(version, str):
-    print(version)
-    sys.exit(0)
-
-if isinstance(version, dict) and version.get("workspace") is True:
-    print(workspace["workspace"]["package"]["version"])
-    sys.exit(0)
-
-print("Could not resolve mir crate version from Cargo.toml metadata", file=sys.stderr)
-sys.exit(1)
-PY
-          )"
+          crate_version="$(cargo metadata --format-version 1 --no-deps | python3 -c 'import json,sys; pkg=next((p for p in json.load(sys.stdin)["packages"] if p["name"]=="mir"), None); sys.exit("Could not find crate named mir in cargo metadata") if pkg is None else None; print(pkg["version"])')"
 
           if [[ "$tag_version" != "$crate_version" ]]; then
             echo "Tag version '$tag_version' does not match crate version '$crate_version'"

@@ -1,0 +1,83 @@
+name: Reusable report nightly status
+
+on:
+  workflow_call:
+    inputs:
+      build_result:
+        required: true
+        type: string
+
+jobs:
+  report-nightly-status:
+    name: Track the nightly build with an issue
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Open or close the nightly-failure issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BUILD_RESULT: ${{ inputs.build_result }}
+        run: |
+          set -euo pipefail
+
+          # The nightly-failure label is provisioned as repo config in
+          # canonical/canonical-repo-automation, so this job just relies on it
+          # being there rather than creating it.
+
+          today="$(date -u +%Y-%m-%d)"
+
+          # A single open issue tracks the current breakage. Find it once so we
+          # can decide whether to open, close, or leave it alone.
+          existing="$(gh issue list \
+            --label nightly-failure \
+            --state open \
+            --limit 1 \
+            --json number \
+            --jq '.[0].number // empty')"
+
+          case "${BUILD_RESULT}" in
+            success)
+              # Back to green - close the tracking issue if one is open.
+              if [ -n "${existing}" ]; then
+                echo "Nightly is green again; closing issue #${existing}."
+                gh issue close "${existing}" \
+                  --comment "Nightly build against \`ppa:mir-team/dev\` is green again on ${today}: ${RUN_URL}"
+              else
+                echo "Nightly is green and no issue is open; nothing to do."
+              fi
+              ;;
+            failure)
+              # A persistent breakage would otherwise open a fresh issue - or
+              # spam a comment - every night, so only act when nothing is
+              # already tracking it.
+              if [ -n "${existing}" ]; then
+                echo "Nightly-failure issue #${existing} already open; leaving it as-is."
+              else
+                echo "No open nightly-failure issue; opening a new one."
+                body="$(cat <<EOF
+          The nightly build against \`ppa:mir-team/dev\` failed on ${today}.
+
+          Failed run: ${RUN_URL}
+
+          The dev PPA is a moving target, so this is most likely a new Mir
+          release that the bridge needs to catch up with. Check the build logs
+          for the first failing step.
+
+          This issue is opened automatically by the CI \`report-nightly-status\`
+          job and will be closed automatically once the nightly build passes
+          again.
+          EOF
+          )"
+                gh issue create \
+                  --title "Nightly build against ppa:mir-team/dev failed (${today})" \
+                  --body "${body}" \
+                  --label nightly-failure
+              fi
+              ;;
+            *)
+              echo "Build result '${BUILD_RESULT}' is neither success nor failure; nothing to do."
+              ;;
+          esac

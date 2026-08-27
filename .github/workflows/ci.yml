@@ -13,94 +13,14 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  CARGO_TERM_COLOR: always
-  # Kept in lockstep with rust-version in the workspace manifest (Cargo.toml).
-  RUST_VERSION: '1.85.0'
+permissions:
+  contents: read
 
 jobs:
   build-and-test:
-    name: Build & test against ppa:mir-team/dev
-    # Pinned to 26.04 rather than ubuntu-latest: the bridge needs miral >= 6.0,
-    # and ppa:mir-team/dev only publishes that for resolute (26.04) and newer.
-    # ubuntu-latest is still noble (24.04), where the PPA tops out at miral 5.8.
-    # 26.04 is a preview runner image today - move back to ubuntu-latest once
-    # 26.04 is GA.
-    runs-on: ubuntu-26.04
-    steps:
-      - name: Check out the repository
-        uses: actions/checkout@v4
-
-      - name: Add the mir-team development PPA
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends software-properties-common
-          sudo add-apt-repository -y ppa:mir-team/dev
-          sudo apt-get update
-
-      - name: Install Mir development libraries and build dependencies
-        run: |
-          # Mir libraries come from ppa:mir-team/dev; the rest are the toolchain
-          # the build needs — libclang for bindgen, pkg-config for build.rs's
-          # probes, and a C++ compiler for the cxx bridge.
-          sudo apt-get install -y --no-install-recommends \
-            libmiral-dev \
-            libmircore-dev \
-            libmircommon-dev \
-            libclang-dev \
-            clang \
-            pkg-config \
-            build-essential
-
-      - name: Report the installed Mir versions
-        run: |
-          pkg-config --modversion miral mircore mircommon || true
-
-      - name: Install the Rust toolchain via rustup
-        run: |
-          # ubuntu-latest ships rustup, but not necessarily the version this
-          # workspace declares - install rustup if it is missing, then pin the
-          # toolchain to rust-version from the workspace manifest.
-          if ! command -v rustup >/dev/null 2>&1; then
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-              | sh -s -- -y --profile minimal --default-toolchain none --no-modify-path
-            echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-            export PATH="$HOME/.cargo/bin:$PATH"
-          fi
-          rustup toolchain install "$RUST_VERSION" \
-            --profile minimal \
-            --component rustfmt \
-            --component clippy
-          rustup default "$RUST_VERSION"
-          rustc --version
-          cargo --version
-
-      - name: Cache cargo registry and build output
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-            target
-          key: ${{ runner.os }}-cargo-${{ env.RUST_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-${{ env.RUST_VERSION }}-
-
-      - name: Check formatting
-        run: cargo fmt --all -- --check
-
-      - name: Lint with clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
-
-      - name: Run the test suite
-        run: cargo test --workspace
-
-      - name: Build the tiling example
-        run: cargo build -p mir-rs-tiling
+    uses: ./.github/workflows/reusable-build-and-test.yml
 
   report-nightly-status:
-    name: Track the nightly build with an issue
     needs: [build-and-test]
     # Only the scheduled (nightly) run touches the tracking issue. A push/PR
     # failure already surfaces on the commit or PR, so filing an issue for those
@@ -108,75 +28,8 @@ jobs:
     # usually a new Mir landing that we need to react to. This runs on both
     # success and failure so it can open the issue on a break and close it again
     # once the build recovers.
-    if: (github.event_name == 'push' && success()) || github.event_name == 'schedule'
-    runs-on: ubuntu-latest
-    permissions:
-      issues: write
-    steps:
-      - name: Open or close the nightly-failure issue
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          BUILD_RESULT: ${{ needs.build-and-test.result }}
-        run: |
-          set -euo pipefail
-
-          # The nightly-failure label is provisioned as repo config in
-          # canonical/canonical-repo-automation, so this job just relies on it
-          # being there rather than creating it.
-
-          today="$(date -u +%Y-%m-%d)"
-
-          # A single open issue tracks the current breakage. Find it once so we
-          # can decide whether to open, close, or leave it alone.
-          existing="$(gh issue list \
-            --label nightly-failure \
-            --state open \
-            --limit 1 \
-            --json number \
-            --jq '.[0].number // empty')"
-
-          case "${BUILD_RESULT}" in
-            success)
-              # Back to green - close the tracking issue if one is open.
-              if [ -n "${existing}" ]; then
-                echo "Nightly is green again; closing issue #${existing}."
-                gh issue close "${existing}" \
-                  --comment "Nightly build against \`ppa:mir-team/dev\` is green again on ${today}: ${RUN_URL}"
-              else
-                echo "Nightly is green and no issue is open; nothing to do."
-              fi
-              ;;
-            failure)
-              # A persistent breakage would otherwise open a fresh issue - or
-              # spam a comment - every night, so only act when nothing is
-              # already tracking it.
-              if [ -n "${existing}" ]; then
-                echo "Nightly-failure issue #${existing} already open; leaving it as-is."
-              else
-                echo "No open nightly-failure issue; opening a new one."
-                body="$(cat <<EOF
-          The nightly build against \`ppa:mir-team/dev\` failed on ${today}.
-
-          Failed run: ${RUN_URL}
-
-          The dev PPA is a moving target, so this is most likely a new Mir
-          release that the bridge needs to catch up with. Check the build logs
-          for the first failing step.
-
-          This issue is opened automatically by the CI \`report-nightly-status\`
-          job and will be closed automatically once the nightly build passes
-          again.
-          EOF
-          )"
-                gh issue create \
-                  --title "Nightly build against ppa:mir-team/dev failed (${today})" \
-                  --body "${body}" \
-                  --label nightly-failure
-              fi
-              ;;
-            *)
-              echo "Build result '${BUILD_RESULT}' is neither success nor failure; nothing to do."
-              ;;
-          esac
+    if: ${{ (github.event_name == 'push' && needs.build-and-test.result == 'success') || github.event_name == 'schedule' }}
+    uses: ./.github/workflows/reusable-report-nightly-status.yml
+    with:
+      build_result: ${{ needs.build-and-test.result }}
+    secrets: inherit
