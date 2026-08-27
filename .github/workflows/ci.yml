@@ -108,7 +108,7 @@ jobs:
     # usually a new Mir landing that we need to react to. This runs on both
     # success and failure so it can open the issue on a break and close it again
     # once the build recovers.
-    if: ${{ always() && github.event_name == 'schedule' }}
+    if: (github.event_name == 'push' && success()) || github.event_name == 'schedule'
     runs-on: ubuntu-latest
     permissions:
       issues: write
