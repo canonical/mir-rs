@@ -2,6 +2,10 @@ name: CI
 
 on:
   push:
+    branches:
+    - main
+    tags:
+    - v*.*.*
   pull_request:
   schedule:
     # 03:17 UTC every day. The dev PPA is a moving target, so this re-pulls it
@@ -21,7 +25,7 @@ permissions:
 jobs:
   detect_rust_version:
     name: Detect required Rust version
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     outputs:
       rust_version: ${{ steps.detect.outputs.rust_version }}
     steps:

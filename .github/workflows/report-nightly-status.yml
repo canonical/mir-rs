@@ -10,7 +10,7 @@ on:
 jobs:
   report-nightly-status:
     name: Track the nightly build with an issue
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       issues: write
     steps:
