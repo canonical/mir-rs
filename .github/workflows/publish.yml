@@ -47,9 +47,9 @@ jobs:
           fi
 
           tag_version="${TAG#v}"
-          crate_version="$(awk -F'\"' '/^\[workspace\.package\]/{in_section=1; next} /^\[/{if(in_section) in_section=0} in_section && /^version *= *\"/{print $2; exit}' Cargo.toml)"
-          if [[ -z "$crate_version" ]]; then
-            echo "Could not extract version from Cargo.toml [workspace.package]"
+          crate_version="$(cargo metadata --format-version 1 --no-deps | jq -r '.packages[] | select(.name == "mir") | .version')"
+          if [[ -z "$crate_version" || "$crate_version" == "null" ]]; then
+            echo "Could not find crate named mir in cargo metadata"
             exit 1
           fi
           if [[ ! "$crate_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
