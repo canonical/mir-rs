@@ -36,9 +36,7 @@ jobs:
           persist-credentials: false
 
       - name: Install toml CLI
-        run: |
-          python3 -m pip install --user toml-cli
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        run: cargo install --locked toml-cli
 
       - name: Validate release tag matches crate metadata
         env:

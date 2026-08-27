@@ -29,9 +29,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install toml CLI
-        run: |
-          python3 -m pip install --user toml-cli
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        run: cargo install --locked toml-cli
 
       - name: Read rust-version from workspace Cargo.toml
         id: detect
