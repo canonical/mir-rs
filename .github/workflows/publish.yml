@@ -11,6 +11,10 @@ on:
         description: Commit SHA validated by CI
         required: true
         type: string
+      rust_version:
+        description: Rust toolchain version to install
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -21,8 +25,6 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  # Kept in lockstep with rust-version in the workspace manifest (Cargo.toml).
-  RUST_VERSION: '1.85.0'
 
 jobs:
   publish:
@@ -85,8 +87,8 @@ jobs:
             echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
             export PATH="$HOME/.cargo/bin:$PATH"
           fi
-          rustup toolchain install "$RUST_VERSION" --profile minimal
-          rustup default "$RUST_VERSION"
+          rustup toolchain install "${{ inputs.rust_version }}" --profile minimal
+          rustup default "${{ inputs.rust_version }}"
           rustc --version
           cargo --version
 

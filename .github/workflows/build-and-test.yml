@@ -2,11 +2,14 @@ name: Build and test
 
 on:
   workflow_call:
+    inputs:
+      rust_version:
+        description: Rust toolchain version to install
+        required: true
+        type: string
 
 env:
   CARGO_TERM_COLOR: always
-  # Kept in lockstep with rust-version in the workspace manifest (Cargo.toml).
-  RUST_VERSION: '1.85.0'
 
 permissions:
   contents: read
@@ -60,11 +63,11 @@ jobs:
             echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
             export PATH="$HOME/.cargo/bin:$PATH"
           fi
-          rustup toolchain install "$RUST_VERSION" \
+          rustup toolchain install "${{ inputs.rust_version }}" \
             --profile minimal \
             --component rustfmt \
             --component clippy
-          rustup default "$RUST_VERSION"
+          rustup default "${{ inputs.rust_version }}"
           rustc --version
           cargo --version
 
@@ -76,9 +79,9 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/git/db
             target
-          key: ${{ runner.os }}-cargo-${{ env.RUST_VERSION }}-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ inputs.rust_version }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-${{ env.RUST_VERSION }}-
+            ${{ runner.os }}-cargo-${{ inputs.rust_version }}-
 
       - name: Check formatting
         run: cargo fmt --all -- --check
