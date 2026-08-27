@@ -4,11 +4,10 @@ on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   CARGO_TERM_COLOR: always
@@ -49,7 +48,7 @@ jobs:
 
       - name: Install the Rust toolchain via rustup
         run: |
-          # ubuntu-latest ships rustup, but not necessarily the version this
+          # The runner ships rustup, but not necessarily the version this
           # workspace declares - install rustup if it is missing, then pin the
           # toolchain to rust-version from the workspace manifest.
           if ! command -v rustup >/dev/null 2>&1; then
