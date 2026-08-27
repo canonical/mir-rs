@@ -35,7 +35,7 @@ jobs:
         id: detect
         run: |
           set -euo pipefail
-          rust_version="$(toml get workspace.package.rust-version --toml-path Cargo.toml)"
+          rust_version="$(toml get workspace.package.rust-version Cargo.toml)"
           if [ -z "${rust_version}" ]; then
             echo "Could not determine rust-version from Cargo.toml"
             exit 1

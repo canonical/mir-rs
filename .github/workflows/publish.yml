@@ -50,7 +50,7 @@ jobs:
           fi
 
           tag_version="${TAG#v}"
-          crate_version="$(toml get workspace.package.version --toml-path Cargo.toml)"
+          crate_version="$(toml get workspace.package.version Cargo.toml)"
           if [[ -z "$crate_version" ]]; then
             echo "Could not determine crate version from Cargo.toml"
             exit 1
