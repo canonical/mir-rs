@@ -81,12 +81,6 @@ jobs:
 
       - name: Install the Rust toolchain via rustup
         run: |
-          if ! command -v rustup >/dev/null 2>&1; then
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-              | sh -s -- -y --profile minimal --default-toolchain none --no-modify-path
-            echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-            export PATH="$HOME/.cargo/bin:$PATH"
-          fi
           rustup toolchain install "${{ inputs.rust_version }}" --profile minimal
           rustup default "${{ inputs.rust_version }}"
           rustc --version
