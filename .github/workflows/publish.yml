@@ -1,0 +1,107 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # Kept in lockstep with rust-version in the workspace manifest (Cargo.toml).
+  RUST_VERSION: '1.85.0'
+
+jobs:
+  publish:
+    name: Validate and publish crate
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Add the mir-team development PPA
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends software-properties-common
+          sudo add-apt-repository -y ppa:mir-team/dev
+          sudo apt-get update
+
+      - name: Install Mir development libraries and build dependencies
+        run: |
+          # Mir libraries come from ppa:mir-team/dev; the rest are the toolchain
+          # the build needs — libclang for bindgen, pkg-config for build.rs's
+          # probes, and a C++ compiler for the cxx bridge.
+          sudo apt-get install -y --no-install-recommends \
+            libmiral-dev \
+            libmircore-dev \
+            libmircommon-dev \
+            libclang-dev \
+            clang \
+            pkg-config \
+            build-essential
+
+      - name: Install the Rust toolchain via rustup
+        run: |
+          # ubuntu-latest ships rustup, but not necessarily the version this
+          # workspace declares - install rustup if it is missing, then pin the
+          # toolchain to rust-version from the workspace manifest.
+          if ! command -v rustup >/dev/null 2>&1; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+              | sh -s -- -y --profile minimal --default-toolchain none --no-modify-path
+            echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+            export PATH="$HOME/.cargo/bin:$PATH"
+          fi
+          rustup toolchain install "$RUST_VERSION" \
+            --profile minimal \
+            --component rustfmt \
+            --component clippy
+          rustup default "$RUST_VERSION"
+          rustc --version
+          cargo --version
+
+      - name: Validate release tag matches crate metadata
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Expected a vMAJOR.MINOR.PATCH tag, got '$TAG'"
+            exit 1
+          fi
+
+          tag_version="${TAG#v}"
+          crate_version="$(cargo metadata --format-version 1 --no-deps | python3 -c "import json,sys; print(next(p['version'] for p in json.load(sys.stdin)['packages'] if p['name']=='mir'))")"
+
+          if [[ "$tag_version" != "$crate_version" ]]; then
+            echo "Tag version '$tag_version' does not match crate version '$crate_version'"
+            exit 1
+          fi
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Lint with clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Run the test suite
+        run: cargo test --workspace
+
+      - name: Build the tiling example
+        run: cargo build -p mir-rs-tiling
+
+      - name: Authenticate with crates.io via trusted publishing
+        id: crates_io
+        uses: rust-lang/crates-io-auth-action@v1
+
+      - name: Publish mir crate
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.crates_io.outputs.token }}
+        run: cargo publish -p mir --locked
