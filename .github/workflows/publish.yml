@@ -36,7 +36,9 @@ jobs:
           persist-credentials: false
 
       - name: Install toml CLI
-        run: cargo install --locked toml-cli
+        run: |
+          echo "PATH=$PATH:$HOME/.cargo/bin" >> $GITHUB_ENV
+          cargo install --locked toml-cli
 
       - name: Validate release tag matches crate metadata
         env:
