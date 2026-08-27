@@ -1,4 +1,4 @@
-name: Reusable report nightly status
+name: Report nightly status
 
 on:
   workflow_call:

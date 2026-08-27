@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   build-and-test:
-    uses: ./.github/workflows/reusable-build-and-test.yml
+    uses: ./.github/workflows/build-and-test.yml
 
   report-nightly-status:
     needs: [build-and-test]
@@ -29,7 +29,15 @@ jobs:
     # success and failure so it can open the issue on a break and close it again
     # once the build recovers.
     if: ${{ (github.event_name == 'push' && needs.build-and-test.result == 'success') || github.event_name == 'schedule' }}
-    uses: ./.github/workflows/reusable-report-nightly-status.yml
+    uses: ./.github/workflows/report-nightly-status.yml
     with:
       build_result: ${{ needs.build-and-test.result }}
     secrets: inherit
+
+  publish:
+    needs: [build-and-test]
+    if: ${{ github.event_name == 'push' && needs.build-and-test.result == 'success' && startsWith(github.ref, 'refs/tags/v') }}
+    uses: ./.github/workflows/publish.yml
+    with:
+      release_tag: ${{ github.ref_name }}
+      head_sha: ${{ github.sha }}
