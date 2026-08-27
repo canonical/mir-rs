@@ -22,7 +22,7 @@ concurrency:
 jobs:
   publish:
     name: Publish mir crate
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
