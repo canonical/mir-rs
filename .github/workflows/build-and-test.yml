@@ -11,8 +11,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   build-and-test:
@@ -23,9 +22,13 @@ jobs:
     # 26.04 is a preview runner image today - move back to ubuntu-latest once
     # 26.04 is GA.
     runs-on: ubuntu-26.04
+    permissions:
+      contents: read
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Add the mir-team development PPA
         run: |
@@ -53,6 +56,8 @@ jobs:
           pkg-config --modversion miral mircore mircommon || true
 
       - name: Install the Rust toolchain via rustup
+        env:
+          RUST_VERSION: ${{ inputs.rust_version }}
         run: |
           # ubuntu-latest ships rustup, but not necessarily the version this
           # workspace declares - install rustup if it is missing, then pin the
@@ -63,16 +68,16 @@ jobs:
             echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
             export PATH="$HOME/.cargo/bin:$PATH"
           fi
-          rustup toolchain install "${{ inputs.rust_version }}" \
+          rustup toolchain install "${RUST_VERSION}" \
             --profile minimal \
             --component rustfmt \
             --component clippy
-          rustup default "${{ inputs.rust_version }}"
+          rustup default "${RUST_VERSION}"
           rustc --version
           cargo --version
 
       - name: Cache cargo registry and build output
-        uses: actions/cache@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/.cargo/registry/index
