@@ -1,12 +1,15 @@
 name: Publish
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'
+  workflow_run:
+    workflows: ['CI']
+    types: [completed]
+
+permissions:
+  contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.workflow_run.id }}
   cancel-in-progress: false
 
 env:
@@ -15,16 +18,96 @@ env:
   RUST_VERSION: '1.85.0'
 
 jobs:
+  prepare:
+    name: Resolve release tag and validate version
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.head_repository.fork == false }}
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+    outputs:
+      should_publish: ${{ steps.tag.outputs.should_publish }}
+      release_tag: ${{ steps.tag.outputs.release_tag }}
+    steps:
+      - name: Check out the repository at the CI commit
+        # v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Resolve release tag and validate crate version
+        id: tag
+        env:
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+
+          mapfile -t release_tags < <(git tag --points-at "$HEAD_SHA" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || true)
+
+          if [ "${#release_tags[@]}" -eq 0 ]; then
+            echo 'No vMAJOR.MINOR.PATCH tag on this successful CI commit; skipping publish.'
+            echo 'should_publish=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "${#release_tags[@]}" -gt 1 ]; then
+            echo "Expected exactly one release tag, found: ${release_tags[*]}"
+            exit 1
+          fi
+
+          release_tag="${release_tags[0]}"
+          tag_version="${release_tag#v}"
+          crate_version="$(
+            python3 - <<'PY'
+import pathlib
+import sys
+import tomllib
+
+workspace = tomllib.loads(pathlib.Path("Cargo.toml").read_text())
+crate = tomllib.loads(pathlib.Path("mir-rs/Cargo.toml").read_text())
+package = crate.get("package", {})
+version = package.get("version")
+
+if isinstance(version, str):
+    print(version)
+    sys.exit(0)
+
+if isinstance(version, dict) and version.get("workspace") is True:
+    print(workspace["workspace"]["package"]["version"])
+    sys.exit(0)
+
+print("Could not resolve mir crate version from Cargo.toml metadata", file=sys.stderr)
+sys.exit(1)
+PY
+          )"
+
+          if [[ "$tag_version" != "$crate_version" ]]; then
+            echo "Tag version '$tag_version' does not match crate version '$crate_version'"
+            exit 1
+          fi
+
+          echo "Resolved release tag: $release_tag"
+          echo 'should_publish=true' >> "$GITHUB_OUTPUT"
+          echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
+
   publish:
-    name: Validate and publish crate
+    name: Publish mir crate
+    needs: [prepare]
+    if: ${{ needs.prepare.outputs.should_publish == 'true' }}
     runs-on: ubuntu-26.04
     permissions:
       contents: read
       id-token: write
     steps:
-      - name: Check out the repository
+      - name: Check out the repository at the release commit
         # v4
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 1
+          persist-credentials: false
 
       - name: Add the mir-team development PPA
         run: |
@@ -35,9 +118,6 @@ jobs:
 
       - name: Install Mir development libraries and build dependencies
         run: |
-          # Mir libraries come from ppa:mir-team/dev; the rest are the toolchain
-          # the build needs — libclang for bindgen, pkg-config for build.rs's
-          # probes, and a C++ compiler for the cxx bridge.
           sudo apt-get install -y --no-install-recommends \
             libmiral-dev \
             libmircore-dev \
@@ -49,53 +129,16 @@ jobs:
 
       - name: Install the Rust toolchain via rustup
         run: |
-          # The runner ships rustup, but not necessarily the version this
-          # workspace declares - install rustup if it is missing, then pin the
-          # toolchain to rust-version from the workspace manifest.
           if ! command -v rustup >/dev/null 2>&1; then
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
               | sh -s -- -y --profile minimal --default-toolchain none --no-modify-path
             echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
             export PATH="$HOME/.cargo/bin:$PATH"
           fi
-          rustup toolchain install "$RUST_VERSION" \
-            --profile minimal \
-            --component rustfmt \
-            --component clippy
+          rustup toolchain install "$RUST_VERSION" --profile minimal
           rustup default "$RUST_VERSION"
           rustc --version
           cargo --version
-
-      - name: Validate release tag matches crate metadata
-        env:
-          TAG: ${{ github.ref_name }}
-        run: |
-          set -euo pipefail
-
-          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Expected a vMAJOR.MINOR.PATCH tag, got '$TAG'"
-            exit 1
-          fi
-
-          tag_version="${TAG#v}"
-          crate_version="$(cargo metadata --format-version 1 --no-deps | python3 -c 'import json,sys; pkg=next((p for p in json.load(sys.stdin)[\"packages\"] if p[\"name\"]==\"mir\"), None); sys.exit(\"Could not find crate named mir in cargo metadata\") if pkg is None else None; print(pkg[\"version\"])')"
-
-          if [[ "$tag_version" != "$crate_version" ]]; then
-            echo "Tag version '$tag_version' does not match crate version '$crate_version'"
-            exit 1
-          fi
-
-      - name: Check formatting
-        run: cargo fmt --all -- --check
-
-      - name: Lint with clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
-
-      - name: Run the test suite
-        run: cargo test --workspace
-
-      - name: Build the tiling example
-        run: cargo build -p mir-rs-tiling
 
       - name: Authenticate with crates.io via trusted publishing
         id: crates_io
