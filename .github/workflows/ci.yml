@@ -20,6 +20,7 @@ permissions:
 
 jobs:
   detect_rust_version:
+    name: Detect required Rust version
     runs-on: ubuntu-latest
     outputs:
       rust_version: ${{ steps.detect.outputs.rust_version }}
