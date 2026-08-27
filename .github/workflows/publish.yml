@@ -1,0 +1,73 @@
+name: Publish
+
+on:
+  workflow_call:
+    inputs:
+      release_tag:
+        description: Release tag in vMAJOR.MINOR.PATCH format
+        required: true
+        type: string
+      head_sha:
+        description: Commit SHA validated by CI
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.head_sha }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish mir crate
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out the repository at the release commit
+        # v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ inputs.head_sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validate release tag matches crate metadata
+        env:
+          TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Expected a vMAJOR.MINOR.PATCH tag, got '$TAG'"
+            exit 1
+          fi
+
+          tag_version="${TAG#v}"
+          crate_version="$(yq -p=toml -o=tsv '.workspace.package.version' Cargo.toml)"
+          if [[ -z "$crate_version" ]]; then
+            echo "Could not determine crate version from Cargo.toml"
+            exit 1
+          fi
+          if [[ ! "$crate_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Resolved crate version '$crate_version' is not MAJOR.MINOR.PATCH"
+            exit 1
+          fi
+
+          if [[ "$tag_version" != "$crate_version" ]]; then
+            echo "Tag version '$tag_version' does not match crate version '$crate_version'"
+            exit 1
+          fi
+
+      - name: Authenticate with crates.io via trusted publishing
+        id: crates_io
+        # v1.0.5
+        uses: rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18
+
+      - name: Publish mir crate
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.crates_io.outputs.token }}
+        run: cargo publish -p mir --locked --no-verify
