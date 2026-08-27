@@ -35,11 +35,6 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Install toml CLI
-        run: |
-          echo "PATH=$PATH:$HOME/.cargo/bin" >> $GITHUB_ENV
-          cargo install --locked toml-cli
-
       - name: Validate release tag matches crate metadata
         env:
           TAG: ${{ inputs.release_tag }}
@@ -52,7 +47,7 @@ jobs:
           fi
 
           tag_version="${TAG#v}"
-          crate_version="$(toml get workspace.package.version Cargo.toml)"
+          crate_version="$(yq -p=toml -o=tsv '.workspace.package.version' Cargo.toml)"
           if [[ -z "$crate_version" ]]; then
             echo "Could not determine crate version from Cargo.toml"
             exit 1

@@ -28,16 +28,11 @@ jobs:
       - name: Check out the repository
         uses: actions/checkout@v4
 
-      - name: Install toml CLI
-        run: |
-          echo "PATH=$PATH:$HOME/.cargo/bin" >> $GITHUB_ENV
-          cargo install --locked toml-cli
-
       - name: Read rust-version from workspace Cargo.toml
         id: detect
         run: |
           set -euo pipefail
-          rust_version="$(toml get workspace.package.rust-version Cargo.toml)"
+          rust_version="$(yq -p=toml -o=tsv '.workspace.package."rust-version"' Cargo.toml)"
           if [ -z "${rust_version}" ]; then
             echo "Could not determine rust-version from Cargo.toml"
             exit 1
