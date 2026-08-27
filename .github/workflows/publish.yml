@@ -3,7 +3,7 @@ name: Publish
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*.*.*'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -23,7 +23,8 @@ jobs:
       id-token: write
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v4
+        # v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Add the mir-team development PPA
         run: |
@@ -77,7 +78,7 @@ jobs:
           fi
 
           tag_version="${TAG#v}"
-          crate_version="$(cargo metadata --format-version 1 --no-deps | python3 -c "import json,sys; print(next(p['version'] for p in json.load(sys.stdin)['packages'] if p['name']=='mir'))")"
+          crate_version="$(cargo metadata --format-version 1 --no-deps | python3 -c 'import json,sys; pkg=next((p for p in json.load(sys.stdin)[\"packages\"] if p[\"name\"]==\"mir\"), None); sys.exit(\"Could not find crate named mir in cargo metadata\") if pkg is None else None; print(pkg[\"version\"])')"
 
           if [[ "$tag_version" != "$crate_version" ]]; then
             echo "Tag version '$tag_version' does not match crate version '$crate_version'"
@@ -98,7 +99,8 @@ jobs:
 
       - name: Authenticate with crates.io via trusted publishing
         id: crates_io
-        uses: rust-lang/crates-io-auth-action@v1
+        # v1.0.5
+        uses: rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18
 
       - name: Publish mir crate
         env:
