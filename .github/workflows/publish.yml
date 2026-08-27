@@ -11,10 +11,6 @@ on:
         description: Commit SHA validated by CI
         required: true
         type: string
-      rust_version:
-        description: Rust toolchain version to install
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -22,9 +18,6 @@ permissions:
 concurrency:
   group: ${{ github.workflow }}-${{ inputs.head_sha }}
   cancel-in-progress: false
-
-env:
-  CARGO_TERM_COLOR: always
 
 jobs:
   publish:
@@ -54,37 +47,20 @@ jobs:
           fi
 
           tag_version="${TAG#v}"
-          crate_version="$(cargo metadata --format-version 1 --no-deps | python3 -c 'import json,sys; pkg=next((p for p in json.load(sys.stdin)["packages"] if p["name"]=="mir"), None); sys.exit("Could not find crate named mir in cargo metadata") if pkg is None else None; print(pkg["version"])')"
+          crate_version="$(awk -F'\"' '/^\[workspace\.package\]/{in_section=1; next} /^\[/{if(in_section) in_section=0} in_section && /^version *= *\"/{print $2; exit}' Cargo.toml)"
+          if [[ -z "$crate_version" ]]; then
+            echo "Could not extract version from Cargo.toml [workspace.package]"
+            exit 1
+          fi
+          if [[ ! "$crate_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Resolved crate version '$crate_version' is not MAJOR.MINOR.PATCH"
+            exit 1
+          fi
 
           if [[ "$tag_version" != "$crate_version" ]]; then
             echo "Tag version '$tag_version' does not match crate version '$crate_version'"
             exit 1
           fi
-
-      - name: Add the mir-team development PPA
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends software-properties-common
-          sudo add-apt-repository -y ppa:mir-team/dev
-          sudo apt-get update
-
-      - name: Install Mir development libraries and build dependencies
-        run: |
-          sudo apt-get install -y --no-install-recommends \
-            libmiral-dev \
-            libmircore-dev \
-            libmircommon-dev \
-            libclang-dev \
-            clang \
-            pkg-config \
-            build-essential
-
-      - name: Install the Rust toolchain via rustup
-        run: |
-          rustup toolchain install "${{ inputs.rust_version }}" --profile minimal
-          rustup default "${{ inputs.rust_version }}"
-          rustc --version
-          cargo --version
 
       - name: Authenticate with crates.io via trusted publishing
         id: crates_io
@@ -94,4 +70,4 @@ jobs:
       - name: Publish mir crate
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.crates_io.outputs.token }}
-        run: cargo publish -p mir --locked
+        run: cargo publish -p mir --locked --no-verify

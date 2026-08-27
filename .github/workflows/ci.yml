@@ -57,10 +57,9 @@ jobs:
     secrets: inherit
 
   publish:
-    needs: [detect_rust_version, build-and-test]
+    needs: [build-and-test]
     if: ${{ github.event_name == 'push' && needs.build-and-test.result == 'success' && startsWith(github.ref, 'refs/tags/v') }}
     uses: ./.github/workflows/publish.yml
     with:
       release_tag: ${{ github.ref_name }}
       head_sha: ${{ github.sha }}
-      rust_version: ${{ needs.detect_rust_version.outputs.rust_version }}
